@@ -1,22 +1,18 @@
 ---
 layout: global
-displayTitle: Spark Streaming Programming Guide
+displayTitle: Spark Streaming 编程指南
 title: Spark Streaming
-description: Spark Streaming programming guide and tutorial for Spark SPARK_VERSION_SHORT
+description: 针对 Spark SPARK_VERSION_SHORT 的 Spark Streaming 编程指南和教程
 ---
 
 * This will become a table of contents (this text will be scraped).
 {:toc}
 
-# Overview
-Spark Streaming is an extension of the core Spark API that enables scalable, high-throughput,
-fault-tolerant stream processing of live data streams. Data can be ingested from many sources
-like Kafka, Flume, Kinesis, or TCP sockets, and can be processed using complex
-algorithms expressed with high-level functions like `map`, `reduce`, `join` and `window`.
-Finally, processed data can be pushed out to filesystems, databases,
-and live dashboards. In fact, you can apply Spark's
-[machine learning](ml-guide.html) and
-[graph processing](graphx-programming-guide.html) algorithms on data streams.
+# 概述
+Spark Streaming 是 Spark Core API 的扩展, 它支持弹性的, 高吞吐的, 容错的实时数据流的处理.
+数据可以通过多种数据源获取, 例如 Kafka, Flume, Kinesis 以及 TCP sockets, 也可以通过例如 `map`, `reduce`, `join`, `window` 等的高级函数组成的复杂算法处理.
+最终, 处理后的数据可以输出到文件系统, 数据库以及实时仪表盘中.
+事实上, 你还可以在 data streams（数据流）上使用 [机器学习](ml-guide.html) 以及 [图形处理](graphx-programming-guide.html) 算法.
 
 <p style="text-align: center;">
   <img
@@ -27,9 +23,7 @@ and live dashboards. In fact, you can apply Spark's
   />
 </p>
 
-Internally, it works as follows. Spark Streaming receives live input data streams and divides
-the data into batches, which are then processed by the Spark engine to generate the final
-stream of results in batches.
+在内部, 它工作原理如下, Spark Streaming 接收实时输入数据流并将数据切分成多个 batch（批）数据, 然后由 Spark 引擎处理它们以生成最终的 stream of results in batches（分批流结果）.
 
 <p style="text-align: center;">
   <img src="img/streaming-flow.png"
@@ -38,43 +32,37 @@ stream of results in batches.
        width="70%" />
 </p>
 
-Spark Streaming provides a high-level abstraction called *discretized stream* or *DStream*,
-which represents a continuous stream of data. DStreams can be created either from input data
-streams from sources such as Kafka, Flume, and Kinesis, or by applying high-level
-operations on other DStreams. Internally, a DStream is represented as a sequence of
-[RDDs](api/scala/index.html#org.apache.spark.rdd.RDD).
+Spark Streaming 提供了一个名为 *discretized stream* 或 *DStream* 的高级抽象, 它代表一个连续的数据流.
+DStream 可以从数据源的输入数据流创建, 例如 Kafka, Flume 以及 Kinesis, 或者在其他 DStream 上进行高层次的操作以创建.
+在内部, 一个 DStream 是通过一系列的 [RDDs](api/scala/index.html#org.apache.spark.rdd.RDD) 来表示.
 
-This guide shows you how to start writing Spark Streaming programs with DStreams. You can
-write Spark Streaming programs in Scala, Java or Python (introduced in Spark 1.2),
-all of which are presented in this guide.
-You will find tabs throughout this guide that let you choose between code snippets of
-different languages.
+本指南告诉你如何使用 DStream 来编写一个 Spark Streaming 程序.
+你可以使用 Scala , Java 或者 Python（Spark 1.2 版本后引进）来编写 Spark Streaming 程序.
+所有这些都在本指南中介绍.
+您可以在本指南中找到标签, 让您可以选择不同语言的代码段.
 
-**Note:** There are a few APIs that are either different or not available in Python. Throughout this guide, you will find the tag <span class="badge" style="background-color: grey">Python API</span> highlighting these differences.
+**Note（注意）:** 在 Python 有些 API 可能会有不同或不可用. 在本指南, 您将找到 <span class="badge" style="background-color: grey">Python API</span> 的标签来高亮显示不同的地方.
 
 ***************************************************************************************************
 
-# A Quick Example
-Before we go into the details of how to write your own Spark Streaming program,
-let's take a quick look at what a simple Spark Streaming program looks like. Let's say we want to
-count the number of words in text data received from a data server listening on a TCP
-socket. All you need to
-do is as follows.
+# 一个入门示例
+在我们详细介绍如何编写你自己的 Spark Streaming 程序的细节之前, 让我们先来看一看一个简单的 Spark Streaming 程序的样子.
+比方说, 我们想要计算从一个监听 TCP socket 的数据服务器接收到的文本数据（text data）中的字数.
+你需要做的就是照着下面的步骤做.
 
 <div class="codetabs">
 <div data-lang="scala"  markdown="1" >
-First, we import the names of the Spark Streaming classes and some implicit
-conversions from StreamingContext into our environment in order to add useful methods to
-other classes we need (like DStream). [StreamingContext](api/scala/index.html#org.apache.spark.streaming.StreamingContext) is the
-main entry point for all streaming functionality. We create a local StreamingContext with two execution threads,  and a batch interval of 1 second.
+首先, 我们导入了 Spark Streaming 类和部分从 StreamingContext 隐式转换到我们的环境的名称, 目的是添加有用的方法到我们需要的其他类（如 DStream）.
+[StreamingContext](api/scala/index.html#org.apache.spark.streaming.StreamingContext) 是所有流功能的主要入口点.
+我们创建了一个带有 2 个执行线程和间歇时间为 1 秒的本地 StreamingContext.
 
 {% highlight scala %}
 import org.apache.spark._
 import org.apache.spark.streaming._
-import org.apache.spark.streaming.StreamingContext._ // not necessary since Spark 1.3
+import org.apache.spark.streaming.StreamingContext._ // 自从 Spark 1.3 开始, 不再是必要的了   
 
-// Create a local StreamingContext with two working thread and batch interval of 1 second.
-// The master requires 2 cores to prevent from a starvation scenario.
+// 创建一个具有两个工作线程（working thread）并且批次间隔为 1 秒的本地 StreamingContext .
+// master 需要 2 个核, 以防止饥饿情况（starvation scenario）.
 
 val conf = new SparkConf().setMaster("local[2]").setAppName("NetworkWordCount")
 val ssc = new StreamingContext(conf, Seconds(1))
@@ -82,51 +70,54 @@ val ssc = new StreamingContext(conf, Seconds(1))
 
 Using this context, we can create a DStream that represents streaming data from a TCP
 source, specified as hostname (e.g. `localhost`) and port (e.g. `9999`).
+使用该 context, 我们可以创建一个代表从 TCP 源流数据的离散流（DStream）, 指定主机名（hostname）（例如 localhost）和端口（例如 9999）.
 
 {% highlight scala %}
-// Create a DStream that will connect to hostname:port, like localhost:9999
+// 创建一个将要连接到 hostname:port 的 DStream，如 localhost:9999 
 val lines = ssc.socketTextStream("localhost", 9999)
 {% endhighlight %}
 
-This `lines` DStream represents the stream of data that will be received from the data
-server. Each record in this DStream is a line of text. Next, we want to split the lines by
-space characters into words.
+上一步的这个 `lines` DStream 表示将要从数据服务器接收到的数据流.
+在这个离散流（DStream）中的每一条记录都是一行文本（text）.
+接下来，我们想要通过空格字符（space characters）拆分这些数据行（lines）成单词（words）.
 
 {% highlight scala %}
-// Split each line into words
+// 将每一行拆分成 words（单词）
 val words = lines.flatMap(_.split(" "))
 {% endhighlight %}
 
-`flatMap` is a one-to-many DStream operation that creates a new DStream by
-generating multiple new records from each record in the source DStream. In this case,
-each line will be split into multiple words and the stream of words is represented as the
-`words` DStream.  Next, we want to count these words.
+`flatMap` 是一种 one-to-many（一对多）的离散流（DStream）操作，它会通过在源离散流（source DStream）中根据每个记录（record）生成多个新纪录的形式创建一个新的离散流（DStream）.
+在这种情况下，在这种情况下，每一行（each line）都将被拆分成多个单词（`words`）和代表单词离散流（words DStream）的单词流.
+接下来，我们想要计算这些单词.
 
 {% highlight scala %}
 import org.apache.spark.streaming.StreamingContext._ // not necessary since Spark 1.3
-// Count each word in each batch
+// 计算每一个 batch（批次）中的每一个 word（单词）
 val pairs = words.map(word => (word, 1))
 val wordCounts = pairs.reduceByKey(_ + _)
 
-// Print the first ten elements of each RDD generated in this DStream to the console
+// 在控制台打印出在这个离散流（DStream）中生成的每个 RDD 的前十个元素
+// 注意: 必需要触发 action（很多初学者会忘记触发 action 操作，导致报错：No output operations registered, so nothing to execute） 
 wordCounts.print()
 {% endhighlight %}
 
-The `words` DStream is further mapped (one-to-one transformation) to a DStream of `(word,
-1)` pairs, which is then reduced to get the frequency of words in each batch of data.
-Finally, `wordCounts.print()` will print a few of the counts generated every second.
+上一步的 `words` DStream 进行了进一步的映射（一对一的转换）为一个 (word, 1) paris 的离散流（DStream），这个 DStream 然后被规约（reduce）来获得数据中每个批次（batch）的单词频率.
+最后，`wordCounts.print()` 将会打印一些每秒生成的计数.
 
 Note that when these lines are executed, Spark Streaming only sets up the computation it
 will perform when it is started, and no real processing has started yet. To start the processing
 after all the transformations have been setup, we finally call
 
+请注意，当这些行（lines）被执行的时候， Spark Streaming 仅仅设置了计算, 只有在启动时才会执行，并没有开始真正地处理.
+为了在所有的转换都已经设置好之后开始处理，我们在最后调用:
+
 {% highlight scala %}
-ssc.start()             // Start the computation
-ssc.awaitTermination()  // Wait for the computation to terminate
+ssc.start()             // 开始计算
+ssc.awaitTermination()  // 等待计算被中断
 {% endhighlight %}
 
-The complete code can be found in the Spark Streaming example
-[NetworkWordCount]({{site.SPARK_GITHUB_URL}}/blob/v{{site.SPARK_VERSION_SHORT}}/examples/src/main/scala/org/apache/spark/examples/streaming/NetworkWordCount.scala).
+该部分完整的代码可以在 Spark Streaming 示例
+[NetworkWordCount]({{site.SPARK_GITHUB_URL}}/blob/v{{site.SPARK_VERSION_SHORT}}/examples/src/main/scala/org/apache/spark/examples/streaming/NetworkWordCount.scala) 中找到.
 <br>
 
 </div>
@@ -268,15 +259,14 @@ The complete code can be found in the Spark Streaming example
 </div>
 </div>
 
-If you have already [downloaded](index.html#downloading) and [built](index.html#building) Spark,
-you can run this example as follows. You will first need to run Netcat
-(a small utility found in most Unix-like systems) as a data server by using
+如果你已经 [下载](index.html#downloading) 并且 [构建](index.html#building) Spark, 您可以使用如下方式来运行该示例.
+你首先需要运行 Netcat（一个在大多数类 Unix 系统中的小工具）作为我们使用的数据服务器.
 
 {% highlight bash %}
 $ nc -lk 9999
 {% endhighlight %}
 
-Then, in a different terminal, you can start the example by using
+然后，在另一个不同的终端，你可以通过执行如下命令来运行该示例:
 
 <div class="codetabs">
 <div data-lang="scala" markdown="1">
@@ -297,8 +287,7 @@ $ ./bin/spark-submit examples/src/main/python/streaming/network_wordcount.py loc
 </div>
 
 
-Then, any lines typed in the terminal running the netcat server will be counted and printed on
-screen every second. It will look something like the following.
+然后，在运行在 netcat 服务器上的终端输入的任何行（lines），都将被计算，并且每一秒都显示在屏幕上，它看起来就像下面这样:
 
 <table width="100%">
     <td>
@@ -370,13 +359,14 @@ Time: 2014-10-14 15:25:21
 ***************************************************************************************************
 ***************************************************************************************************
 
-# Basic Concepts
+# 基础概念
 
-Next, we move beyond the simple example and elaborate on the basics of Spark Streaming.
+接下来，我们了解完了简单的例子，开始阐述 Spark Streaming 的基本知识。
 
-## Linking
+## 依赖
 
-Similar to Spark, Spark Streaming is available through Maven Central. To write your own Spark Streaming program, you will have to add the following dependency to your SBT or Maven project.
+与 Spark 类似，Spark Streaming 可以通过 Maven 来管理依赖.
+为了编写你自己的 Spark Streaming 程序，你必须添加以下的依赖到你的 SBT 或者 Maven 项目中.
 
 <div class="codetabs">
 <div data-lang="Maven" markdown="1">
@@ -393,34 +383,30 @@ Similar to Spark, Spark Streaming is available through Maven Central. To write y
 </div>
 </div>
 
-For ingesting data from sources like Kafka, Flume, and Kinesis that are not present in the Spark
-Streaming core
- API, you will have to add the corresponding
-artifact `spark-streaming-xyz_{{site.SCALA_BINARY_VERSION}}` to the dependencies. For example,
-some of the common ones are as follows.
+针对从 Spark Streaming Core API 中不存在的数据源中获取数据，如 Kafka， Flume，Kinesis ，你必须添加相应的坐标  `spark-streaming-xyz_{{site.SCALA_BINARY_VERSION}}` 到依赖中.
+例如，有一些常见的依赖如下.
+
 
 <table class="table">
-<tr><th>Source</th><th>Artifact</th></tr>
+<tr><th>Source（数据源）</th><th>Artifact（坐标）</th></tr>
 <tr><td> Kafka </td><td> spark-streaming-kafka-0-8_{{site.SCALA_BINARY_VERSION}} </td></tr>
 <tr><td> Flume </td><td> spark-streaming-flume_{{site.SCALA_BINARY_VERSION}} </td></tr>
 <tr><td> Kinesis<br/></td><td>spark-streaming-kinesis-asl_{{site.SCALA_BINARY_VERSION}} [Amazon Software License] </td></tr>
 <tr><td></td><td></td></tr>
 </table>
 
-For an up-to-date list, please refer to the
-[Maven repository](http://search.maven.org/#search%7Cga%7C1%7Cg%3A%22org.apache.spark%22%20AND%20v%3A%22{{site.SPARK_VERSION_SHORT}}%22)
-for the full list of supported sources and artifacts.
+想要查看一个实时更新的列表，请参阅 [Maven repository](http://search.maven.org/#search%7Cga%7C1%7Cg%3A%22org.apache.spark%22%20AND%20v%3A%22{{site.SPARK_VERSION_SHORT}}%22) 来了解支持的 sources（数据源）和 artifacts（坐标）的完整列表。
 
 ***
 
-## Initializing StreamingContext
+## 初始化 StreamingContext
 
-To initialize a Spark Streaming program, a **StreamingContext** object has to be created which is the main entry point of all Spark Streaming functionality.
+为了初始化一个 Spark Streaming 程序, 一个 **StreamingContext** 对象必须要被创建出来，它是所有的 Spark Streaming 功能的主入口点。
 
 <div class="codetabs">
 <div data-lang="scala" markdown="1">
 
-A [StreamingContext](api/scala/index.html#org.apache.spark.streaming.StreamingContext) object can be created from a [SparkConf](api/scala/index.html#org.apache.spark.SparkConf) object.
+一个 [StreamingContext](api/scala/index.html#org.apache.spark.streaming.StreamingContext) 对象可以从一个 [SparkConf](api/scala/index.html#org.apache.spark.SparkConf) 对象中来创建.
 
 {% highlight scala %}
 import org.apache.spark._
@@ -430,24 +416,22 @@ val conf = new SparkConf().setAppName(appName).setMaster(master)
 val ssc = new StreamingContext(conf, Seconds(1))
 {% endhighlight %}
 
-The `appName` parameter is a name for your application to show on the cluster UI.
-`master` is a [Spark, Mesos or YARN cluster URL](submitting-applications.html#master-urls),
-or a special __"local[\*]"__ string to run in local mode. In practice, when running on a cluster,
-you will not want to hardcode `master` in the program,
-but rather [launch the application with `spark-submit`](submitting-applications.html) and
-receive it there. However, for local testing and unit tests, you can pass "local[\*]" to run Spark Streaming
-in-process (detects the number of cores in the local system). Note that this internally creates a [SparkContext](api/scala/index.html#org.apache.spark.SparkContext) (starting point of all Spark functionality) which can be accessed as `ssc.sparkContext`.
+这个 `appName` 参数是展示在集群 UI 界面上的应用程序的名称.
+`master` 是一个 [Spark, Mesos or YARN cluster URL](submitting-applications.html#master-urls),
+或者一个特殊的 __"local[\*]"__ 字符串以使用 local mode（本地模式）来运行.
+在实践中，当在集群上运行时，你不会想在应用程序中硬编码 `master`，而是 [使用 `spark-submit` 来启动应用程序](submitting-applications.html) , 并且接受该参数.
+然而，对于本地测试和单元测试，你可以传递 "local[*]" 来运行 Spark Streaming 进程（检测本地系统中内核的个数）.
+请注意，做个内部创建了一个 [SparkContext](api/scala/index.html#org.apache.spark.SparkContext)（所有 Spark 功能的出发点），它可以像 ssc.sparkContext 这样被访问.
 
-The batch interval must be set based on the latency requirements of your application
-and available cluster resources. See the [Performance Tuning](#setting-the-right-batch-interval)
-section for more details.
+这个 batch interval（批间隔）必须根据您的应用程序和可用的集群资源的等待时间要求进行设置.
+更多详情请参阅 [优化指南](#setting-the-right-batch-interval) 部分.
 
-A `StreamingContext` object can also be created from an existing `SparkContext` object.
+一个 `StreamingContext` 对象也可以从一个现有的 `SparkContext` 对象来创建.
 
 {% highlight scala %}
 import org.apache.spark.streaming._
 
-val sc = ...                // existing SparkContext
+val sc = ...                // 已存在的 SparkContext
 val ssc = new StreamingContext(sc, Seconds(1))
 {% endhighlight %}
 
@@ -512,31 +496,31 @@ section for more details.
 </div>
 </div>
 
-After a context is defined, you have to do the following.
+在定义一个 context 之后,您必须执行以下操作.
 
-1. Define the input sources by creating input DStreams.
-1. Define the streaming computations by applying transformation and output operations to DStreams.
-1. Start receiving data and processing it using `streamingContext.start()`.
-1. Wait for the processing to be stopped (manually or due to any error) using `streamingContext.awaitTermination()`.
-1. The processing can be manually stopped using `streamingContext.stop()`.
+1. 通过创建输入 DStreams 来定义输入源.
+1. 通过应用转换和输出操作 DStreams 定义流计算（streaming computations）.
+1. 开始接收输入并且使用 `streamingContext.start()` 来处理数据.
+1. 使用 `streamingContext.awaitTermination()` 等待处理被终止（手动或者由于任何错误）.
+1. 使用 `streamingContext.stop()` 来手动的停止处理.
 
-##### Points to remember:
+##### 需要记住的几点:
 {:.no_toc}
-- Once a context has been started, no new streaming computations can be set up or added to it.
-- Once a context has been stopped, it cannot be restarted.
-- Only one StreamingContext can be active in a JVM at the same time.
-- stop() on StreamingContext also stops the SparkContext. To stop only the StreamingContext, set the optional parameter of `stop()` called `stopSparkContext` to false.
-- A SparkContext can be re-used to create multiple StreamingContexts, as long as the previous StreamingContext is stopped (without stopping the SparkContext) before the next StreamingContext is created.
+- 一旦一个 context 已经启动，将不会有新的数据流的计算可以被创建或者添加到它。.
+- 一旦一个 context 已经停止，它不会被重新启动.
+- 同一时间内在 JVM 中只有一个 StreamingContext 可以被激活.
+- 在 StreamingContext 上的 stop() 同样也停止了 SparkContext 。为了只停止 StreamingContext ，设置 `stop()` 的可选参数，名叫 `stopSparkContext` 为 false.
+- 一个 SparkContext 就可以被重用以创建多个 StreamingContexts，只要前一个 StreamingContext 在下一个StreamingContext 被创建之前停止（不停止 SparkContext）.
 
 ***
 
-## Discretized Streams (DStreams)
-**Discretized Stream** or **DStream** is the basic abstraction provided by Spark Streaming.
-It represents a continuous stream of data, either the input data stream received from source,
-or the processed data stream generated by transforming the input stream. Internally,
-a DStream is represented by a continuous series of RDDs, which is Spark's abstraction of an immutable,
-distributed dataset (see [Spark Programming Guide](programming-guide.html#resilient-distributed-datasets-rdds) for more details). Each RDD in a DStream contains data from a certain interval,
-as shown in the following figure.
+## Discretized Streams (DStreams)（离散化流）
+**Discretized Stream** or **DStream** 是 Spark Streaming 提供的基本抽象.
+它代表了一个连续的数据流, 无论是从 source（数据源）接收到的输入数据流,
+还是通过转换输入流所产生的处理过的数据流.
+在内部, 一个 DStream 被表示为一系列连续的 RDDs, 它是 Spark 中一个不可改变的抽象,
+distributed dataset  (的更多细节请看 [Spark 编程指南](programming-guide.html#resilient-distributed-datasets-rdds).
+在一个 DStream 中的每个 RDD 包含来自一定的时间间隔的数据，如下图所示.
 
 <p style="text-align: center;">
   <img src="img/streaming-dstream.png"
@@ -545,10 +529,9 @@ as shown in the following figure.
        width="70%" />
 </p>
 
-Any operation applied on a DStream translates to operations on the underlying RDDs. For example,
-in the [earlier example](#a-quick-example) of converting a stream of lines to words,
-the `flatMap` operation is applied on each RDD in the `lines` DStream to generate the RDDs of the
- `words` DStream. This is shown in the following figure.
+应用于 DStream 的任何操作转化为对于底层的 RDDs 的操作.
+例如，在 [先前的示例](#一个入门示例)，转换一个行（lines）流成为单词（words）中，flatMap 操作被应用于在行离散流（lines DStream）中的每个 RDD 来生成单词离散流（words DStream）的 RDDs .
+如下所示.
 
 <p style="text-align: center;">
   <img src="img/streaming-dstream-ops.png"
@@ -557,65 +540,46 @@ the `flatMap` operation is applied on each RDD in the `lines` DStream to generat
        width="70%" />
 </p>
 
-
-These underlying RDD transformations are computed by the Spark engine. The DStream operations
-hide most of these details and provide the developer with a higher-level API for convenience.
-These operations are discussed in detail in later sections.
+这些底层的 RDD 变换由 Spark 引擎（engine）计算。 DStream 操作隐藏了大多数这些细节并为了方便起见，提供给了开发者一个更高级别的 API 。这些操作细节会在后边的章节中讨论。
 
 ***
 
-## Input DStreams and Receivers
-Input DStreams are DStreams representing the stream of input data received from streaming
-sources. In the [quick example](#a-quick-example), `lines` was an input DStream as it represented
-the stream of data received from the netcat server. Every input DStream
-(except file stream, discussed later in this section) is associated with a **Receiver**
-([Scala doc](api/scala/index.html#org.apache.spark.streaming.receiver.Receiver),
-[Java doc](api/java/org/apache/spark/streaming/receiver/Receiver.html)) object which receives the
-data from a source and stores it in Spark's memory for processing.
+## Input DStreams 和 Receivers（接收器）
+输入 DStreams 是代表输入数据是从流的源数据（streaming sources）接收到的流的 DStream.
+在 [一个入门示例](#一个入门示例) 中, `lines` 是一个 input DStream, 因为它代表着从 netcat 服务器接收到的数据的流.
+每一个 input DStream（除了 file stream 之外, 会在本章的后面来讨论）与一个 **Receiver** ([Scala doc](api/scala/index.html#org.apache.spark.streaming.receiver.Receiver),
+[Java doc](api/java/org/apache/spark/streaming/receiver/Receiver.html)) 对象关联, 它从 source（数据源）中获取数据，并且存储它到 Sparl 的内存中用于处理.
 
-Spark Streaming provides two categories of built-in streaming sources.
+Spark Streaming 提供了两种内置的 streaming source（流的数据源）.
 
-- *Basic sources*: Sources directly available in the StreamingContext API.
-  Examples: file systems, and socket connections.
-- *Advanced sources*: Sources like Kafka, Flume, Kinesis, etc. are available through
-  extra utility classes. These require linking against extra dependencies as discussed in the
-  [linking](#linking) section.
+- *Basic sources（基础的数据源）*: 在 StreamingContext API 中直接可以使用的数据源.
+  例如: file systems 和 socket connections.
+- *Advanced sources（高级的数据源）*: 像 Kafka, Flume, Kinesis, 等等这样的数据源. 可以通过额外的 utility classes 来使用. 像在 [依赖](#依赖) 中讨论的一样, 这些都需要额外的外部依赖.
 
-We are going to discuss some of the sources present in each category later in this section.
+在本节的后边，我们将讨论每种类别中的现有的一些数据源.
 
-Note that, if you want to receive multiple streams of data in parallel in your streaming
-application, you can create multiple input DStreams (discussed
-further in the [Performance Tuning](#level-of-parallelism-in-data-receiving) section). This will
-create multiple receivers which will simultaneously receive multiple data streams. But note that a
-Spark worker/executor is a long-running task, hence it occupies one of the cores allocated to the
-Spark Streaming application. Therefore, it is important to remember that a Spark Streaming application
-needs to be allocated enough cores (or threads, if running locally) to process the received data,
-as well as to run the receiver(s).
+请注意, 如果你想要在你的流处理程序中并行的接收多个数据流, 你可以创建多个 input DStreams（在 [性能优化](#level-of-parallelism-in-data-receiving) 部分进一步讨论）.
+这将创建同时接收多个数据流的多个 receivers（接收器）.
+但需要注意，一个 Spark 的 worker/executor 是一个长期运行的任务（task），因此它将占用分配给 Spark Streaming 的应用程序的所有核中的一个核（core）.
+因此，要记住，一个 Spark Streaming 应用需要分配足够的核（core）（或线程（threads），如果本地运行的话）来处理所接收的数据，以及来运行接收器（receiver(s)）.
 
-##### Points to remember
+##### 要记住的几点
 {:.no_toc}
 
-- When running a Spark Streaming program locally, do not use "local" or "local[1]" as the master URL.
-  Either of these means that only one thread will be used for running tasks locally. If you are using
-  an input DStream based on a receiver (e.g. sockets, Kafka, Flume, etc.), then the single thread will
-  be used to run the receiver, leaving no thread for processing the received data. Hence, when
-  running locally, always use "local[*n*]" as the master URL, where *n* > number of receivers to run
-  (see [Spark Properties](configuration.html#spark-properties) for information on how to set
-  the master).
+- 当在本地运行一个 Spark Streaming 程序的时候，不要使用 "local" 或者 "local[1]" 作为 master 的 URL.
+  这两种方法中的任何一个都意味着只有一个线程将用于运行本地任务.
+  如果你正在使用一个基于接收器（receiver）的输入离散流（input DStream）（例如， sockets ，Kafka ，Flume 等），则该单独的线程将用于运行接收器（receiver），而没有留下任何的线程用于处理接收到的数据.
+  因此，在本地运行时，总是用 "local[n]" 作为 master URL ，其中的 n > 运行接收器的数量（查看 [Spark 属性](configuration.html#spark-properties) 来了解怎样去设置 master 的信息）.
 
-- Extending the logic to running on a cluster, the number of cores allocated to the Spark Streaming
-  application must be more than the number of receivers. Otherwise the system will receive data, but
-  not be able to process it.
+- 将逻辑扩展到集群上去运行，分配给 Spark Streaming 应用程序的内核（core）的内核数必须大于接收器（receiver）的数量。否则系统将接收数据，但是无法处理它.
 
-### Basic Sources
+### 基础的 Sources（数据源）
 {:.no_toc}
 
-We have already taken a look at the `ssc.socketTextStream(...)` in the [quick example](#a-quick-example)
-which creates a DStream from text
-data received over a TCP socket connection. Besides sockets, the StreamingContext API provides
-methods for creating DStreams from files as input sources.
+我们已经简单地了解过了在 [入门示例](#一个入门示例) 中 `ssc.socketTextStream(...)` 的例子，例子中是通过从一个 TCP socket 连接接收到的文本数据来创建了一个离散流（DStream）.
+除了 sockets 之外，StreamingContext API 也提供了根据文件作为输入来源创建离散流（DStreams）的方法。
 
-- **File Streams:** For reading data from files on any file system compatible with the HDFS API (that is, HDFS, S3, NFS, etc.), a DStream can be created as:
+- **File Streams:** 用于从文件中读取数据，在任何与 HDFS API 兼容的文件系统中（即，HDFS，S3，NFS 等），一个 DStream 可以像下面这样创建:
 
     <div class="codetabs">
     <div data-lang="scala" markdown="1">
@@ -629,172 +593,150 @@ methods for creating DStreams from files as input sources.
     </div>
     </div>
 
-	Spark Streaming will monitor the directory `dataDirectory` and process any files created in that directory (files written in nested directories not supported). Note that
+	Spark Streaming 将监控`dataDirectory` 目录并且该目录中任何新建的文件 (写在嵌套目录中的文件是不支持的). 注意
 
-     + The files must have the same data format.
-     + The files must be created in the `dataDirectory` by atomically *moving* or *renaming* them into
-     the data directory.
-     + Once moved, the files must not be changed. So if the files are being continuously appended, the new data will not be read.
+     + 文件必须具有相同的数据格式.
+     + 文件必须被创建在 `dataDirectory` 目录中, 通过 atomically（院子的） *moving（移动）* 或 *renaming（重命名）* 它们到数据目录.
+     + 一旦移动，这些文件必须不能再更改，因此如果文件被连续地追加，新的数据将不会被读取.
 
-	For simple text files, there is an easier method `streamingContext.textFileStream(dataDirectory)`. And file streams do not require running a receiver, hence does not require allocating cores.
+  对于简单的文本文件，还有一个更加简单的方法 `streamingContext.textFileStream(dataDirectory)`.
+  并且文件流（file streams）不需要运行一个接收器（receiver），因此，不需要分配内核（core）。
 
-	<span class="badge" style="background-color: grey">Python API</span> `fileStream` is not available in the Python API, only	`textFileStream` is	available.
+	<span class="badge" style="background-color: grey">Python API</span> 在 Python API 中 `fileStream` 是不可用的, 只有	`textFileStream` 是可用的.
 
-- **Streams based on Custom Receivers:** DStreams can be created with data streams received through custom receivers. See the [Custom Receiver
-  Guide](streaming-custom-receivers.html) for more details.
+- **Streams based on Custom Receivers（基于自定义的接收器的流）:** DStreams 可以使用通过自定义的 receiver（接收器）接收到的数据来创建. 更多细节请参阅 [自定义 Receiver
+  指南](streaming-custom-receivers.html).
 
-- **Queue of RDDs as a Stream:** For testing a Spark Streaming application with test data, one can also create a DStream based on a queue of RDDs, using `streamingContext.queueStream(queueOfRDDs)`. Each RDD pushed into the queue will be treated as a batch of data in the DStream, and processed like a stream.
+- **Queue of RDDs as a Stream（RDDs 队列作为一个流）:** 为了使用测试数据测试 Spark Streaming 应用程序，还可以使用 `streamingContext.queueStream(queueOfRDDs)` 创建一个基于 RDDs 队列的 DStream，每个进入队列的 RDD 都将被视为 DStream 中的一个批次数据，并且就像一个流进行处理.
 
-For more details on streams from sockets and files, see the API documentations of the relevant functions in
+想要了解更多的关于从 sockets 和文件（files）创建的流的细节, 请参阅相关函数的 API文档, 它们在
 [StreamingContext](api/scala/index.html#org.apache.spark.streaming.StreamingContext) for
 Scala, [JavaStreamingContext](api/java/index.html?org/apache/spark/streaming/api/java/JavaStreamingContext.html)
-for Java, and [StreamingContext](api/python/pyspark.streaming.html#pyspark.streaming.StreamingContext) for Python.
+for Java 以及 [StreamingContext](api/python/pyspark.streaming.html#pyspark.streaming.StreamingContext) for Python 中.
 
-### Advanced Sources
+### 高级 Sources（数据源）
 {:.no_toc}
 
-<span class="badge" style="background-color: grey">Python API</span> As of Spark {{site.SPARK_VERSION_SHORT}},
-out of these sources, Kafka, Kinesis and Flume are available in the Python API.
+<span class="badge" style="background-color: grey">Python API</span> 从 Spark {{site.SPARK_VERSION_SHORT}} 开始,
+在 Python API 中的 Kafka, Kinesis 和 Flume 这样的外部数据源都是可用的.
 
-This category of sources require interfacing with external non-Spark libraries, some of them with
-complex dependencies (e.g., Kafka and Flume). Hence, to minimize issues related to version conflicts
-of dependencies, the functionality to create DStreams from these sources has been moved to separate
-libraries that can be [linked](#linking) to explicitly when necessary.
+这一类别的 sources（数据源）需要使用非 Spark 库中的外部接口，它们中的其中一些还需要比较复杂的依赖关系（例如， Kafka 和 Flume）.
+因此，为了最小化有关的依赖关系的版本冲突的问题，这些资源本身不能创建 DStream 的功能，它是通过 [依赖](#依赖) 单独的类库实现创建 DStream 的功能.
 
-Note that these advanced sources are not available in the Spark shell, hence applications based on
-these advanced sources cannot be tested in the shell. If you really want to use them in the Spark
-shell you will have to download the corresponding Maven artifact's JAR along with its dependencies
-and add it to the classpath.
+请注意, 这些高级 sources（数据源）不能再 Spark shell 中使用, 因此，基于这些高级 sources（数据源）的应用程序不能在 shell 中被测试.
+如果你真的想要在 Spark shell 中使用它们，你必须下载带有它的依赖的相应的 Maven 组件的 JAR ，并且将其添加到 classpath.
 
-Some of these advanced sources are as follows.
+一些高级的 sources（数据源）如下.
 
-- **Kafka:** Spark Streaming {{site.SPARK_VERSION_SHORT}} is compatible with Kafka broker versions 0.8.2.1 or higher. See the [Kafka Integration Guide](streaming-kafka-integration.html) for more details.
+- **Kafka:** Spark Streaming {{site.SPARK_VERSION_SHORT}} 与 Kafka broker 版本 0.8.2.1 或更高是兼容的. 更多细节请参阅 [Kafka 集成指南](streaming-kafka-integration.html).
 
-- **Flume:** Spark Streaming {{site.SPARK_VERSION_SHORT}} is compatible with Flume 1.6.0. See the [Flume Integration Guide](streaming-flume-integration.html) for more details.
+- **Flume:** Spark Streaming {{site.SPARK_VERSION_SHORT}} 与 Flume 1.6.0 相兼容. 更多细节请参阅 [Flume 集成指南](streaming-flume-integration.html) .
 
-- **Kinesis:** Spark Streaming {{site.SPARK_VERSION_SHORT}} is compatible with Kinesis Client Library 1.2.1. See the [Kinesis Integration Guide](streaming-kinesis-integration.html) for more details.
+- **Kinesis:** Spark Streaming {{site.SPARK_VERSION_SHORT}} 与 Kinesis Client Library 1.2.1 相兼容. 更多细节请参阅 [Kinesis 集成指南](streaming-kinesis-integration.html).
 
-### Custom Sources
+### 自定义 Sources（数据源）
 {:.no_toc}
 
-<span class="badge" style="background-color: grey">Python API</span> This is not yet supported in Python.
+<span class="badge" style="background-color: grey">Python API</span> 在 Python 中还不支持这一功能.
 
-Input DStreams can also be created out of custom data sources. All you have to do is implement a
-user-defined **receiver** (see next section to understand what that is) that can receive data from
-the custom sources and push it into Spark. See the [Custom Receiver
-Guide](streaming-custom-receivers.html) for details.
+Input DStreams 也可以从自定义数据源中创建.
+如果您想这样做, 需要实现一个用户自定义的 **receiver** （看下一节以了解它是什么）, 它可以从自定义的 sources（数据源）中接收数据并且推送它到 Spark.
+更多细节请参阅 [自定义 Receiver 指南](streaming-custom-receivers.html).
 
-### Receiver Reliability
+### Receiver Reliability（接收器的可靠性）
 {:.no_toc}
 
-There can be two kinds of data sources based on their *reliability*. Sources
-(like Kafka and Flume) allow the transferred data to be acknowledged. If the system receiving
-data from these *reliable* sources acknowledges the received data correctly, it can be ensured
-that no data will be lost due to any kind of failure. This leads to two kinds of receivers:
+可以有两种基于他们的 *reliability可靠性* 的数据源.
+数据源（如 Kafka 和 Flume）允许传输的数据被确认.
+如果系统从这些可靠的数据来源接收数据，并且被确认（acknowledges）正确地接收数据，它可以确保数据不会因为任何类型的失败而导致数据丢失.
+这样就出现了 2 种接收器（receivers）:
 
-1. *Reliable Receiver* - A *reliable receiver* correctly sends acknowledgment to a reliable
-  source when the data has been received and stored in Spark with replication.
-1. *Unreliable Receiver* - An *unreliable receiver* does *not* send acknowledgment to a source. This can be used for sources that do not support acknowledgment, or even for reliable sources when one does not want or need to go into the complexity of acknowledgment.
+1. *Reliable Receiver（可靠的接收器）* - 当数据被接收并存储在 Spark 中并带有备份副本时，一个可靠的接收器（reliable receiver）正确地发送确认（acknowledgment）给一个可靠的数据源（reliable source）.
+1. *Unreliable Receiver（不可靠的接收器）* - 一个不可靠的接收器（ unreliable receiver ）不发送确认（acknowledgment）到数据源。这可以用于不支持确认的数据源，或者甚至是可靠的数据源当你不想或者不需要进行复杂的确认的时候.
 
-The details of how to write a reliable receiver are discussed in the
-[Custom Receiver Guide](streaming-custom-receivers.html).
+在 [自定义 Receiver 指南](streaming-custom-receivers.html) 中描述了关于如何去编写一个 reliable receiver（可靠的接收器）的细节.
 
 ***
 
-## Transformations on DStreams
-Similar to that of RDDs, transformations allow the data from the input DStream to be modified.
-DStreams support many of the transformations available on normal Spark RDD's.
-Some of the common ones are as follows.
+##  DStreams 上的 Transformations（转换）
+与 RDD 类似，transformation 允许从 input DStream 输入的数据做修改.
+DStreams 支持很多在 RDD 中可用的 transformation 算子。一些常用的如下所示 : 
+
+与RDD类似，类似，transformation 允许修改来自 input DStream 的数据.
+DStreams 支持标准的 Spark RDD 上可用的许多转换.
+一些常见的如下.
 
 <table class="table">
-<tr><th style="width:25%">Transformation</th><th>Meaning</th></tr>
+<tr><th style="width:25%">Transformation（转换）</th><th>Meaning（含义）</th></tr>
 <tr>
   <td> <b>map</b>(<i>func</i>) </td>
-  <td> Return a new DStream by passing each element of the source DStream through a
-  function <i>func</i>. </td>
+  <td> 利用函数 <i>func</i> 处理原 DStream 的每个元素，返回一个新的 DStream. </td>
 </tr>
 <tr>
   <td> <b>flatMap</b>(<i>func</i>) </td>
-  <td> Similar to map, but each input item can be mapped to 0 or more output items. </td>
+  <td> 与 map 相似，但是每个输入项可用被映射为 0 个或者多个输出项。. </td>
 </tr>
 <tr>
   <td> <b>filter</b>(<i>func</i>) </td>
-  <td> Return a new DStream by selecting only the records of the source DStream on which
-  <i>func</i> returns true. </td>
+  <td> 返回一个新的 DStream，它仅仅包含原 DStream 中函数 <i>func</i> 返回值为 true 的项.</td>
 </tr>
 <tr>
   <td> <b>repartition</b>(<i>numPartitions</i>) </td>
-  <td> Changes the level of parallelism in this DStream by creating more or fewer partitions. </td>
+  <td> 通过创建更多或者更少的 partition 以改变这个 DStream 的并行级别（level of parallelism）. </td>
 </tr>
 <tr>
   <td> <b>union</b>(<i>otherStream</i>) </td>
-  <td> Return a new DStream that contains the union of the elements in the source DStream and
-  <i>otherDStream</i>. </td>
+  <td> 返回一个新的 DStream，它包含源 DStream 和 <i>otherDStream</i> 的所有元素.</td>
 </tr>
 <tr>
   <td> <b>count</b>() </td>
-  <td> Return a new DStream of single-element RDDs by counting the number of elements in each RDD
-   of the source DStream. </td>
+  <td> 通过 count 源 DStream 中每个 RDD 的元素数量，返回一个包含单元素（single-element）RDDs 的新 DStream. </td>
 </tr>
 <tr>
   <td> <b>reduce</b>(<i>func</i>) </td>
-  <td> Return a new DStream of single-element RDDs by aggregating the elements in each RDD of the
-  source DStream using a function <i>func</i> (which takes two arguments and returns one).
-  The function should be associative and commutative so that it can be computed in parallel. </td>
+  <td> 利用函数 <i>func</i> 聚集源 DStream 中每个 RDD 的元素，返回一个包含单元素（single-element）RDDs 的新 DStream。函数应该是相关联的，以使计算可以并行化.</td>
 </tr>
 <tr>
   <td> <b>countByValue</b>() </td>
-  <td> When called on a DStream of elements of type K, return a new DStream of (K, Long) pairs
-  where the value of each key is its frequency in each RDD of the source DStream.  </td>
+  <td> 在元素类型为 K 的 DStream上，返回一个（K,long）pair 的新的 DStream，每个 key 的值是在原 DStream 的每个 RDD 中的次数.</td>
 </tr>
 <tr>
   <td> <b>reduceByKey</b>(<i>func</i>, [<i>numTasks</i>]) </td>
-  <td> When called on a DStream of (K, V) pairs, return a new DStream of (K, V) pairs where the
-  values for each key are aggregated using the given reduce function. <b>Note:</b> By default,
-  this uses Spark's default number of parallel tasks (2 for local mode, and in cluster mode the number
-  is determined by the config property <code>spark.default.parallelism</code>) to do the grouping.
-  You can pass an optional <code>numTasks</code> argument to set a different number of tasks.</td>
+  <td> 当在一个由 (K,V) pairs 组成的 DStream 上调用这个算子时，返回一个新的, 由 (K,V) pairs 组成的 DStream，每一个 key 的值均由给定的 reduce 函数聚合起来.
+  <b>注意</b>：在默认情况下，这个算子利用了 Spark 默认的并发任务数去分组。你可以用 numTasks 参数设置不同的任务数。</td>
 </tr>
 <tr>
   <td> <b>join</b>(<i>otherStream</i>, [<i>numTasks</i>]) </td>
-  <td> When called on two DStreams of (K, V) and (K, W) pairs, return a new DStream of (K, (V, W))
-  pairs with all pairs of elements for each key. </td>
+  <td> 当应用于两个 DStream（一个包含（K,V）对，一个包含 (K,W) 对），返回一个包含 (K, (V, W)) 对的新 DStream. </td>
 </tr>
 <tr>
   <td> <b>cogroup</b>(<i>otherStream</i>, [<i>numTasks</i>]) </td>
-  <td> When called on a DStream of (K, V) and (K, W) pairs, return a new DStream of
-  (K, Seq[V], Seq[W]) tuples.</td>
+  <td>当应用于两个 DStream（一个包含（K,V）对，一个包含 (K,W) 对），返回一个包含 (K, Seq[V], Seq[W]) 的 tuples（元组）.</td>
 </tr>
 <tr>
   <td> <b>transform</b>(<i>func</i>) </td>
-  <td> Return a new DStream by applying a RDD-to-RDD function to every RDD of the source DStream.
-  This can be used to do arbitrary RDD operations on the DStream. </td>
+  <td> 通过对源 DStream 的每个 RDD 应用 RDD-to-RDD 函数，创建一个新的 DStream. 这个可以在 DStream 中的任何 RDD 操作中使用. </td>
 </tr>
 <tr>
   <td> <b>updateStateByKey</b>(<i>func</i>) </td>
-  <td> Return a new "state" DStream where the state for each key is updated by applying the
-  given function on the previous state of the key and the new values for the key. This can be
-  used to maintain arbitrary state data for each key.</td>
+  <td> 返回一个新的 "状态" 的 DStream，其中每个 key 的状态通过在 key 的先前状态应用给定的函数和 key 的新 valyes 来更新. 这可以用于维护每个 key 的任意状态数据.</td>
 </tr>
 <tr><td></td><td></td></tr>
 </table>
 
-A few of these transformations are worth discussing in more detail.
+其中一些转换值得深入讨论.
 
-#### UpdateStateByKey Operation
+#### UpdateStateByKey 操作
 {:.no_toc}
-The `updateStateByKey` operation allows you to maintain arbitrary state while continuously updating
-it with new information. To use this, you will have to do two steps.
+该 `updateStateByKey` 操作允许您维护任意状态，同时不断更新新信息. 你需要通过两步来使用它.
 
-1. Define the state - The state can be an arbitrary data type.
-1. Define the state update function - Specify with a function how to update the state using the
-previous state and the new values from an input stream.
+1. 定义 state - state 可以是任何的数据类型.
+1. 定义 state update function（状态更新函数） - 使用函数指定如何使用先前状态来更新状态，并从输入流中指定新值.
 
-In every batch, Spark will apply the state  update function for all existing keys, regardless of whether they have new data in a batch or not. If the update function returns `None` then the key-value pair will be eliminated.
+在每个 batch 中，Spark 会使用状态更新函数为所有已有的 key 更新状态，不管在 batch 中是否含有新的数据。如果这个更新函数返回一个 none，这个 key-value pair 也会被消除.
 
-Let's illustrate this with an example. Say you want to maintain a running count of each word
-seen in a text data stream. Here, the running count is the state and it is an integer. We
-define the update function as:
+让我们举个例子来说明.
+在例子中，假设你想保持在文本数据流中看到的每个单词的运行计数，运行次数用一个 state 表示，它的类型是整数, 我们可以使用如下方式来定义 update 函数:
 
 <div class="codetabs">
 <div data-lang="scala" markdown="1">
@@ -806,15 +748,13 @@ def updateFunction(newValues: Seq[Int], runningCount: Option[Int]): Option[Int] 
 }
 {% endhighlight %}
 
-This is applied on a DStream containing words (say, the `pairs` DStream containing `(word,
-1)` pairs in the [earlier example](#a-quick-example)).
+这里是一个应用于包含 words（单词）的 DStream 上（也就是说，在 [先前的示例](#一个入门示例)中，该 `pairs` DStream 包含了 (word, 1) pair）.
 
 {% highlight scala %}
 val runningCounts = pairs.updateStateByKey[Int](updateFunction _)
 {% endhighlight %}
 
-The update function will be called for each word, with `newValues` having a sequence of 1's (from
-the `(word, 1)` pairs) and the `runningCount` having the previous count.
+update 函数将会被每个单词调用，`newValues` 拥有一系列的 1（来自 (word, 1) pairs），runningCount 拥有之前的次数.
 
 </div>
 <div data-lang="java" markdown="1">
@@ -865,20 +805,15 @@ Python code, take a look at the example
 </div>
 </div>
 
-Note that using `updateStateByKey` requires the checkpoint directory to be configured, which is
-discussed in detail in the [checkpointing](#checkpointing) section.
+请注意, 使用 `updateStateByKey` 需要配置的 `checkpoint` （检查点）的目录，这里是更详细关于讨论 [checkpointing](#checkpointing) 的部分.
 
-
-#### Transform Operation
+#### Transform Operation*（转换操作）
 {:.no_toc}
-The `transform` operation (along with its variations like `transformWith`) allows
-arbitrary RDD-to-RDD functions to be applied on a DStream. It can be used to apply any RDD
-operation that is not exposed in the DStream API.
-For example, the functionality of joining every batch in a data stream
-with another dataset is not directly exposed in the DStream API. However,
-you can easily use `transform` to do this. This enables very powerful possibilities. For example,
-one can do real-time data cleaning by joining the input data stream with precomputed
-spam information (maybe generated with Spark as well) and then filtering based on it.
+transform 操作（以及它的变化形式如 `transformWith`）允许在 DStream 运行任何 RDD-to-RDD 函数.
+它能够被用来应用任何没在 DStream API 中提供的 RDD 操作.
+例如，连接数据流中的每个批（batch）和另外一个数据集的功能并没有在 DStream API 中提供，然而你可以简单的利用 `transform` 方法做到.
+这使得有非常强大的可能性.
+例如，可以通过将输入数据流与预先计算的垃圾邮件信息（也可以使用 Spark 一起生成）进行实时数据清理，然后根据它进行过滤.
 
 <div class="codetabs">
 <div data-lang="scala" markdown="1">
@@ -918,15 +853,14 @@ cleanedDStream = wordCounts.transform(lambda rdd: rdd.join(spamInfoRDD).filter(.
 </div>
 </div>
 
-Note that the supplied function gets called in every batch interval. This allows you to do
-time-varying RDD operations, that is, RDD operations, number of partitions, broadcast variables,
-etc. can be changed between batches.
+请注意，每个 batch interval（批间隔）提供的函数被调用.
+这允许你做随时间变动的 RDD 操作, 即 RDD 操作, 分区的数量，广播变量，等等.
+batch 之间等可以改变。
 
-#### Window Operations
+#### Window Operations（窗口操作）
 {:.no_toc}
-Spark Streaming also provides *windowed computations*, which allow you to apply
-transformations over a sliding window of data. The following figure illustrates this sliding
-window.
+Spark Streaming 也支持 *windowed computations（窗口计算）*，它允许你在数据的一个滑动窗口上应用 transformation（转换）.
+下图说明了这个滑动窗口.
 
 <p style="text-align: center;">
   <img src="img/streaming-dstream-window.png"
@@ -935,24 +869,17 @@ window.
        width="60%" />
 </p>
 
-As shown in the figure, every time the window *slides* over a source DStream,
-the source RDDs that fall within the window are combined and operated upon to produce the
-RDDs of the windowed DStream. In this specific case, the operation is applied over the last 3 time
-units of data, and slides by 2 time units. This shows that any window operation needs to
-specify two parameters.
+如上图显示，窗口在源 DStream 上 *slides（滑动）*，合并和操作落入窗内的源 RDDs，产生窗口化的 DStream 的 RDDs。在这个具体的例子中，程序在三个时间单元的数据上进行窗口操作，并且每两个时间单元滑动一次。 这说明，任何一个窗口操作都需要指定两个参数.
 
- * <i>window length</i> - The duration of the window (3 in the figure).
- * <i>sliding interval</i> - The interval at which the window operation is performed (2 in
- the figure).
+ * <i>window length（窗口长度）</i> - 窗口的持续时间（图 3）.
+ * <i>sliding interval（滑动间隔）</i> - 执行窗口操作的间隔（图 2）.
 
-These two parameters must be multiples of the batch interval of the source DStream (1 in the
-figure).
+这两个参数必须是 source DStream 的 batch interval（批间隔）的倍数（图 1）.  
 
-Let's illustrate the window operations with an example. Say, you want to extend the
-[earlier example](#a-quick-example) by generating word counts over the last 30 seconds of data,
-every 10 seconds. To do this, we have to apply the `reduceByKey` operation on the `pairs` DStream of
-`(word, 1)` pairs over the last 30 seconds of data. This is done using the
-operation `reduceByKeyAndWindow`.
+让我们举例以说明窗口操作.
+例如，你想扩展前面的例子用来计算过去 30 秒的词频，间隔时间是 10 秒.
+为了达到这个目的，我们必须在过去 30 秒的 `(wrod, 1)` pairs 的 `pairs` DStream 上应用 `reduceByKey` 操作.
+用方法 `reduceByKeyAndWindow` 实现.
 
 <div class="codetabs">
 <div data-lang="scala" markdown="1">
@@ -981,73 +908,51 @@ windowedWordCounts = pairs.reduceByKeyAndWindow(lambda x, y: x + y, lambda x, y:
 </div>
 </div>
 
-Some of the common window operations are as follows. All of these operations take the
-said two parameters - <i>windowLength</i> and <i>slideInterval</i>.
+一些常用的窗口操作如下所示，这些操作都需要用到上文提到的两个参数 - <i>windowLength（窗口长度）</i> 和 <i>slideInterval（滑动的时间间隔）</i>.
 
 <table class="table">
-<tr><th style="width:25%">Transformation</th><th>Meaning</th></tr>
+<tr><th style="width:25%">Transformation（转换）</th><th>Meaning（含义）</th></tr>
 <tr>
   <td> <b>window</b>(<i>windowLength</i>, <i>slideInterval</i>) </td>
-  <td> Return a new DStream which is computed based on windowed batches of the source DStream.
-  </td>
+  <td> 返回一个新的 DStream, 它是基于 source DStream 的窗口 batch 进行计算的.</td>
 </tr>
 <tr>
   <td> <b>countByWindow</b>(<i>windowLength</i>, <i>slideInterval</i>) </td>
-  <td> Return a sliding window count of elements in the stream.
-  </td>
+  <td> 返回 stream（流）中滑动窗口元素的数</td>
 </tr>
 <tr>
   <td> <b>reduceByWindow</b>(<i>func</i>, <i>windowLength</i>, <i>slideInterval</i>) </td>
-  <td> Return a new single-element stream, created by aggregating elements in the stream over a
-  sliding interval using <i>func</i>. The function should be associative and commutative so that it can be computed
-  correctly in parallel.
-  </td>
+  <td> 返回一个新的单元素 stream（流），它通过在一个滑动间隔的 stream 中使用 <i>func</i> 来聚合以创建. 该函数应该是 associative（关联的）且 commutative（可交换的），以便它可以并行计算</td>
 </tr>
 <tr>
   <td> <b>reduceByKeyAndWindow</b>(<i>func</i>, <i>windowLength</i>, <i>slideInterval</i>,
   [<i>numTasks</i>]) </td>
-  <td> When called on a DStream of (K, V) pairs, returns a new DStream of (K, V)
-  pairs where the values for each key are aggregated using the given reduce function <i>func</i>
-  over batches in a sliding window. <b>Note:</b> By default, this uses Spark's default number of
-  parallel tasks (2 for local mode, and in cluster mode the number is determined by the config
-  property <code>spark.default.parallelism</code>) to do the grouping. You can pass an optional
-  <code>numTasks</code> argument to set a different number of tasks.
+  <td> 在一个 (K, V) pairs 的 DStream 上调用时, 返回一个新的 (K, V) pairs 的 Stream, 其中的每个 key 的 values 是在滑动窗口上的 batch 使用给定的函数 <i>func</i> 来聚合产生的.
+  <b>Note（注意）:</b> 默认情况下, 该操作使用 Spark 的默认并行任务数量（local model 是 2, 在 cluster mode 中的数量通过 <code>spark.default.parallelism</code> 来确定）来做 grouping. 您可以通过一个可选的 <code>numTasks</code> 参数来设置一个不同的 tasks（任务）数量.
   </td>
 </tr>
 <tr>
   <td> <b>reduceByKeyAndWindow</b>(<i>func</i>, <i>invFunc</i>, <i>windowLength</i>,
   <i>slideInterval</i>, [<i>numTasks</i>]) </td>
-  <td markdown="1"> A more efficient version of the above <code>reduceByKeyAndWindow()</code> where the reduce
-  value of each window is calculated incrementally using the reduce values of the previous window.
-  This is done by reducing the new data that enters the sliding window, and "inverse reducing" the
-  old data that leaves the window. An example would be that of "adding" and "subtracting" counts
-  of keys as the window slides. However, it is applicable only to "invertible reduce functions",
-  that is, those reduce functions which have a corresponding "inverse reduce" function (taken as
-  parameter <i>invFunc</i>). Like in <code>reduceByKeyAndWindow</code>, the number of reduce tasks
-  is configurable through an optional argument. Note that [checkpointing](#checkpointing) must be
-  enabled for using this operation.
+  <td markdown="1"> 上述 <code>reduceByKeyAndWindow()</code> 的更有效的一个版本，其中使用前一窗口的 reduce 值逐渐计算每个窗口的 reduce值. 这是通过减少进入滑动窗口的新数据，以及 "inverse reducing（逆减）" 离开窗口的旧数据来完成的. 一个例子是当窗口滑动时"添加" 和 "减" keys 的数量. 然而，它仅适用于 “invertible reduce functions（可逆减少函数）”，即具有相应 "inverse reduce（反向减少）" 函数的 reduce 函数（作为参数<i> invFunc </ i>）. 像在 <code>reduceByKeyAndWindow</code> 中的那样, reduce 任务的数量可以通过可选参数进行配置. 请注意, 针对该操作的使用必须启用 [checkpointing](#checkpointing).
 </td>
 </tr>
 <tr>
   <td> <b>countByValueAndWindow</b>(<i>windowLength</i>,
   <i>slideInterval</i>, [<i>numTasks</i>]) </td>
-  <td> When called on a DStream of (K, V) pairs, returns a new DStream of (K, Long) pairs where the
-  value of each key is its frequency within a sliding window. Like in
-  <code>reduceByKeyAndWindow</code>, the number of reduce tasks is configurable through an
-  optional argument.
+  <td> 在一个 (K, V) pairs 的 DStream 上调用时, 返回一个新的 (K, Long) pairs 的 DStream, 其中每个 key 的 value 是它在一个滑动窗口之内的频次. 像 code>reduceByKeyAndWindow</code> 中的那样, reduce 任务的数量可以通过可选参数进行配置.
 </td>
 </tr>
 <tr><td></td><td></td></tr>
 </table>
 
-#### Join Operations
+#### Join 操作
 {:.no_toc}
-Finally, its worth highlighting how easily you can perform different kinds of joins in Spark Streaming.
-
+最后，它值得强调的是，您可以轻松地在 Spark Streaming 中执行不同类型的 join.
 
 ##### Stream-stream joins
 {:.no_toc}
-Streams can be very easily joined with other streams.
+Streams（流）可以非常容易地与其他流进行 join.
 
 <div class="codetabs">
 <div data-lang="scala" markdown="1">
@@ -1072,7 +977,11 @@ joinedStream = stream1.join(stream2)
 {% endhighlight %}
 </div>
 </div>
-Here, in each batch interval, the RDD generated by `stream1` will be joined with the RDD generated by `stream2`. You can also do `leftOuterJoin`, `rightOuterJoin`, `fullOuterJoin`. Furthermore, it is often very useful to do joins over windows of the streams. That is pretty easy as well. 
+
+这里，在每个 batch interval（批间隔）中，由 `stream1` 生成的 RDD 将与 `stream2` 生成的 RDD 进行 jion.
+你也可以做 `leftOuterJoin`，`rightOuterJoin`，`fullOuterJoin`.
+此外，在 stream（流）的窗口上进行 join 通常是非常有用的.
+这也很容易做到.
 
 <div class="codetabs">
 <div data-lang="scala" markdown="1">
@@ -1100,7 +1009,8 @@ joinedStream = windowedStream1.join(windowedStream2)
 
 ##### Stream-dataset joins
 {:.no_toc}
-This has already been shown earlier while explain `DStream.transform` operation. Here is yet another example of joining a windowed stream with a dataset.
+这在解释 `DStream.transform` 操作时已经在前面演示过了.
+这是另一个 join window stream（窗口流）与 dataset 的例子.
 
 <div class="codetabs">
 <div data-lang="scala" markdown="1">
@@ -1126,80 +1036,64 @@ joinedStream = windowedStream.transform(lambda rdd: rdd.join(dataset))
 </div>
 </div>
 
-In fact, you can also dynamically change the dataset you want to join against. The function provided to `transform` is evaluated every batch interval and therefore will use the current dataset that `dataset` reference points to.
+实际上，您也可以动态更改要加入的 dataset.
+提供给 `transform` 的函数是每个 batch interval（批次间隔）进行评估，因此将使用 `dataset` 引用指向当前的 dataset.
 
-The complete list of DStream transformations is available in the API documentation. For the Scala API,
-see [DStream](api/scala/index.html#org.apache.spark.streaming.dstream.DStream)
-and [PairDStreamFunctions](api/scala/index.html#org.apache.spark.streaming.dstream.PairDStreamFunctions).
-For the Java API, see [JavaDStream](api/java/index.html?org/apache/spark/streaming/api/java/JavaDStream.html)
-and [JavaPairDStream](api/java/index.html?org/apache/spark/streaming/api/java/JavaPairDStream.html).
-For the Python API, see [DStream](api/python/pyspark.streaming.html#pyspark.streaming.DStream).
+DStream 转换的完整列表可在 API 文档中找到.
+针对 Scala API，请看 [DStream](api/scala/index.html#org.apache.spark.streaming.dstream.DStream) 和 [PairDStreamFunctions](api/scala/index.html#org.apache.spark.streaming.dstream.PairDStreamFunctions).
+针对 Java API，请看 [JavaDStream](api/java/index.html?org/apache/spark/streaming/api/java/JavaDStream.html) 和 [JavaPairDStream](api/java/index.html?org/apache/spark/streaming/api/java/JavaPairDStream.html).
+针对 Python API，请看 [DStream](api/python/pyspark.streaming.html#pyspark.streaming.DStream).
 
 ***
 
-## Output Operations on DStreams
-Output operations allow DStream's data to be pushed out to external systems like a database or a file systems.
-Since the output operations actually allow the transformed data to be consumed by external systems,
-they trigger the actual execution of all the DStream transformations (similar to actions for RDDs).
-Currently, the following output operations are defined:
+## DStreams 上的输出操作
+
+输出操作允许将 DStream 的数据推送到外部系统, 如数据库或文件系统.
+由于输出操作实际上允许外部系统使用变换后的数据, 所以它们触发所有 DStream 变换的实际执行（类似于RDD的动作）.
+目前, 定义了以下输出操作：
 
 <table class="table">
 <tr><th style="width:30%">Output Operation</th><th>Meaning</th></tr>
 <tr>
   <td> <b>print</b>()</td>
-  <td> Prints the first ten elements of every batch of data in a DStream on the driver node running
-  the streaming application. This is useful for development and debugging.
+  <td> 在运行流应用程序的 driver 节点上的DStream中打印每批数据的前十个元素. 这对于开发和调试很有用.
   <br/>
-  <span class="badge" style="background-color: grey">Python API</span> This is called
-  <b>pprint()</b> in the Python API.
+  <span class="badge" style="background-color: grey">Python API</span> 这在 Python API 中称为 <b>pprint()</b>.
   </td>
 </tr>
 <tr>
   <td> <b>saveAsTextFiles</b>(<i>prefix</i>, [<i>suffix</i>]) </td>
-  <td> Save this DStream's contents as text files. The file name at each batch interval is
-  generated based on <i>prefix</i> and <i>suffix</i>: <i>"prefix-TIME_IN_MS[.suffix]"</i>. </td>
+  <td> 将此 DStream 的内容另存为文本文件. 
+  每个批处理间隔的文件名是根据 <i>前缀</i> 和 <i>后缀</i> : <i>"prefix-TIME_IN_MS[.suffix]"</i> 生成的.</td>
 </tr>
 <tr>
   <td> <b>saveAsObjectFiles</b>(<i>prefix</i>, [<i>suffix</i>]) </td>
-  <td> Save this DStream's contents as <code>SequenceFiles</code> of serialized Java objects. The file
-  name at each batch interval is generated based on <i>prefix</i> and
-  <i>suffix</i>: <i>"prefix-TIME_IN_MS[.suffix]"</i>.
+  <td> 将此 DStream 的内容另存为序列化 Java 对象的 <code>SequenceFiles</code>. 
+  每个批处理间隔的文件名是根据 <i>前缀</i> 和 <i>后缀</i> : <i>"prefix-TIME_IN_MS[.suffix]"</i> 生成的.
   <br/>
-  <span class="badge" style="background-color: grey">Python API</span> This is not available in
-  the Python API.
+  <span class="badge" style="background-color: grey">Python API</span> 这在Python API中是不可用的.
   </td>
 </tr>
 <tr>
   <td> <b>saveAsHadoopFiles</b>(<i>prefix</i>, [<i>suffix</i>]) </td>
-  <td> Save this DStream's contents as Hadoop files. The file name at each batch interval is
-  generated based on <i>prefix</i> and <i>suffix</i>: <i>"prefix-TIME_IN_MS[.suffix]"</i>.
+  <td> 将此 DStream 的内容另存为 Hadoop 文件.
+  每个批处理间隔的文件名是根据 <i>前缀</i> 和 <i>后缀</i> : <i>"prefix-TIME_IN_MS[.suffix]"</i> 生成的.
   <br>
-  <span class="badge" style="background-color: grey">Python API</span> This is not available in
-  the Python API.
+  <span class="badge" style="background-color: grey">Python API</span> 这在Python API中是不可用的.
   </td>
 </tr>
 <tr>
   <td> <b>foreachRDD</b>(<i>func</i>) </td>
-  <td> The most generic output operator that applies a function, <i>func</i>, to each RDD generated from
-  the stream. This function should push the data in each RDD to an external system, such as saving the RDD to
-  files, or writing it over the network to a database. Note that the function <i>func</i> is executed
-  in the driver process running the streaming application, and will usually have RDD actions in it
-  that will force the computation of the streaming RDDs.</td>
+  <td> 对从流中生成的每个 RDD 应用函数 <i>func</i> 的最通用的输出运算符. 此功能应将每个 RDD 中的数据推送到外部系统, 例如将 RDD 保存到文件, 或将其通过网络写入数据库. 请注意, 函数 <i>func</i> 在运行流应用程序的 driver 进程中执行, 通常会在其中具有 RDD 动作, 这将强制流式传输 RDD 的计算.</td>
 </tr>
 <tr><td></td><td></td></tr>
 </table>
 
-### Design Patterns for using foreachRDD
+### foreachRDD 设计模式的使用
 {:.no_toc}
-`dstream.foreachRDD` is a powerful primitive that allows data to be sent out to external systems.
-However, it is important to understand how to use this primitive correctly and efficiently.
-Some of the common mistakes to avoid are as follows.
+`dstream.foreachRDD` 是一个强大的原语, 允许将数据发送到外部系统.但是, 了解如何正确有效地使用这个原语很重要. 避免一些常见的错误如下.
 
-Often writing data to external system requires creating a connection object
-(e.g. TCP connection to a remote server) and using it to send data to a remote system.
-For this purpose, a developer may inadvertently try creating a connection object at
-the Spark driver, and then try to use it in a Spark worker to save records in the RDDs.
-For example (in Scala),
+通常向外部系统写入数据需要创建连接对象（例如与远程服务器的 TCP 连接）, 并使用它将数据发送到远程系统.为此, 开发人员可能会无意中尝试在Spark driver 中创建连接对象, 然后尝试在Spark工作人员中使用它来在RDD中保存记录.例如（在 Scala 中）:
 
 <div class="codetabs">
 <div data-lang="scala" markdown="1">
@@ -1234,14 +1128,11 @@ dstream.foreachRDD(sendRecord)
 </div>
 </div>
 
-This is incorrect as this requires the connection object to be serialized and sent from the
-driver to the worker. Such connection objects are rarely transferable across machines. This
-error may manifest as serialization errors (connection object not serializable), initialization
-errors (connection object needs to be initialized at the workers), etc. The correct solution is
-to create the connection object at the worker.
+这是不正确的, 因为这需要将连接对象序列化并从 driver 发送到 worker. 这种连接对象很少能跨机器转移.
+此错误可能会显示为序列化错误（连接对象不可序列化）, 初始化错误（连接对象需要在 worker 初始化）等.
+正确的解决方案是在 worker 创建连接对象.
 
-However, this can lead to another common mistake - creating a new connection for every record.
-For example,
+但是, 这可能会导致另一个常见的错误 - 为每个记录创建一个新的连接. 例如: 
 
 <div class="codetabs">
 <div data-lang="scala" markdown="1">
@@ -1278,11 +1169,9 @@ dstream.foreachRDD(lambda rdd: rdd.foreach(sendRecord))
 </div>
 </div>
 
-Typically, creating a connection object has time and resource overheads. Therefore, creating and
-destroying a connection object for each record can incur unnecessarily high overheads and can
-significantly reduce the overall throughput of the system. A better solution is to use
-`rdd.foreachPartition` - create a single connection object and send all the records in a RDD
-partition using that connection.
+通常, 创建连接对象具有时间和资源开销. 
+因此, 创建和销毁每个记录的连接对象可能会引起不必要的高开销, 并可显着降低系统的总体吞吐量. 
+一个更好的解决方案是使用 `rdd.foreachPartition` - 创建一个连接对象, 并使用该连接在 RDD 分区中发送所有记录.
 
 <div class="codetabs">
 <div data-lang="scala" markdown="1">
@@ -1322,11 +1211,10 @@ dstream.foreachRDD(lambda rdd: rdd.foreachPartition(sendPartition))
 </div>
 </div>
 
-  This amortizes the connection creation overheads over many records.
+  这样可以在多个记录上分摊连接创建开销.
 
-Finally, this can be further optimized by reusing connection objects across multiple RDDs/batches.
-One can maintain a static pool of connection objects than can be reused as
-RDDs of multiple batches are pushed to the external system, thus further reducing the overheads.
+最后, 可以通过跨多个RDD /批次重用连接对象来进一步优化.
+可以维护连接对象的静态池, 而不是将多个批次的 RDD 推送到外部系统时重新使用, 从而进一步减少开销.
 
 <div class="codetabs">
 <div data-lang="scala" markdown="1">
@@ -1341,7 +1229,6 @@ dstream.foreachRDD { rdd =>
 }
 {% endhighlight %}
 </div>
-
 <div data-lang="java" markdown="1">
 {% highlight java %}
 dstream.foreachRDD(rdd -> {
@@ -1371,19 +1258,21 @@ dstream.foreachRDD(lambda rdd: rdd.foreachPartition(sendPartition))
 </div>
 </div>
 
-Note that the connections in the pool should be lazily created on demand and timed out if not used for a while. This achieves the most efficient sending of data to external systems.
+请注意, 池中的连接应根据需要懒惰创建, 如果不使用一段时间, 则会超时.
+这实现了最有效地将数据发送到外部系统.
 
 
-##### Other points to remember:
+##### 其他要记住的要点:
 {:.no_toc}
-- DStreams are executed lazily by the output operations, just like RDDs are lazily executed by RDD actions. Specifically, RDD actions inside the DStream output operations force the processing of the received data. Hence, if your application does not have any output operation, or has output operations like `dstream.foreachRDD()` without any RDD action inside them, then nothing will get executed. The system will simply receive the data and discard it.
+- DStreams 通过输出操作进行延迟执行, 就像 RDD 由 RDD 操作懒惰地执行. 具体来说, DStream 输出操作中的 RDD 动作强制处理接收到的数据.因此, 如果您的应用程序没有任何输出操作, 或者具有 `dstream.foreachRDD()` 等输出操作, 而在其中没有任何 RDD 操作, 则不会执行任何操作.系统将简单地接收数据并将其丢弃.
 
-- By default, output operations are executed one-at-a-time. And they are executed in the order they are defined in the application.
+- 默认情况下, 输出操作是 one-at-a-time 执行的. 它们按照它们在应用程序中定义的顺序执行.
 
 ***
 
-## DataFrame and SQL Operations
-You can easily use [DataFrames and SQL](sql-programming-guide.html) operations on streaming data. You have to create a SparkSession using the SparkContext that the StreamingContext is using. Furthermore this has to done such that it can be restarted on driver failures. This is done by creating a lazily instantiated singleton instance of SparkSession. This is shown in the following example. It modifies the earlier [word count example](#a-quick-example) to generate word counts using DataFrames and SQL. Each RDD is converted to a DataFrame, registered as a temporary table and then queried using SQL.
+## DataFrame 和 SQL 操作
+
+您可以轻松地在流数据上使用 [DataFrames and SQL](sql-programming-guide.html) 和 SQL 操作. 您必须使用 StreamingContext 正在使用的 SparkContext 创建一个 SparkSession.此外, 必须这样做, 以便可以在 driver 故障时重新启动. 这是通过创建一个简单实例化的 SparkSession 单例实例来实现的.这在下面的示例中显示.它使用 DataFrames 和 SQL 来修改早期的字数 [示例以生成单词计数](#a-quick-example).将每个 RDD 转换为 DataFrame, 注册为临时表, 然后使用 SQL 进行查询.
 
 <div class="codetabs">
 <div data-lang="scala" markdown="1">
@@ -1413,7 +1302,7 @@ words.foreachRDD { rdd =>
 
 {% endhighlight %}
 
-See the full [source code]({{site.SPARK_GITHUB_URL}}/blob/v{{site.SPARK_VERSION_SHORT}}/examples/src/main/scala/org/apache/spark/examples/streaming/SqlNetworkWordCount.scala).
+请参阅完整的 [源代码]({{site.SPARK_GITHUB_URL}}/blob/v{{site.SPARK_VERSION_SHORT}}/examples/src/main/scala/org/apache/spark/examples/streaming/SqlNetworkWordCount.scala).
 </div>
 <div data-lang="java" markdown="1">
 {% highlight java %}
@@ -1459,7 +1348,7 @@ words.foreachRDD((rdd, time) -> {
 });
 {% endhighlight %}
 
-See the full [source code]({{site.SPARK_GITHUB_URL}}/blob/v{{site.SPARK_VERSION_SHORT}}/examples/src/main/java/org/apache/spark/examples/streaming/JavaSqlNetworkWordCount.java).
+请参阅完整的 [源代码]({{site.SPARK_GITHUB_URL}}/blob/v{{site.SPARK_VERSION_SHORT}}/examples/src/main/java/org/apache/spark/examples/streaming/JavaSqlNetworkWordCount.java).
 </div>
 <div data-lang="python" markdown="1">
 {% highlight python %}
@@ -1501,100 +1390,80 @@ def process(time, rdd):
 words.foreachRDD(process)
 {% endhighlight %}
 
-See the full [source code]({{site.SPARK_GITHUB_URL}}/blob/v{{site.SPARK_VERSION_SHORT}}/examples/src/main/python/streaming/sql_network_wordcount.py).
+请参阅完整的 [源代码]({{site.SPARK_GITHUB_URL}}/blob/v{{site.SPARK_VERSION_SHORT}}/examples/src/main/python/streaming/sql_network_wordcount.py).
 
 </div>
 </div>
 
-You can also run SQL queries on tables defined on streaming data from a different thread (that is, asynchronous to the running StreamingContext). Just make sure that you set the StreamingContext to remember a sufficient amount of streaming data such that the query can run. Otherwise the StreamingContext, which is unaware of the any asynchronous SQL queries, will delete off old streaming data before the query can complete. For example, if you want to query the last batch, but your query can take 5 minutes to run, then call `streamingContext.remember(Minutes(5))` (in Scala, or equivalent in other languages).
+您还可以对来自不同线程的流数据（即异步运行的 StreamingContext ）上定义的表运行 SQL 查询.
+只需确保您将 StreamingContext 设置为记住足够数量的流数据, 以便查询可以运行.
+否则, 不知道任何异步 SQL 查询的 StreamingContext 将在查询完成之前删除旧的流数据.
+例如, 如果要查询最后一个批次, 但是您的查询可能需要5分钟才能运行, 则可以调用 `streamingContext.remember(Minutes(5))` （以 Scala 或其他语言的等价物）.
 
-See the [DataFrames and SQL](sql-programming-guide.html) guide to learn more about DataFrames.
-
-***
-
-## MLlib Operations
-You can also easily use machine learning algorithms provided by [MLlib](ml-guide.html). First of all, there are streaming machine learning algorithms (e.g. [Streaming Linear Regression](mllib-linear-methods.html#streaming-linear-regression), [Streaming KMeans](mllib-clustering.html#streaming-k-means), etc.) which can simultaneously learn from the streaming data as well as apply the model on the streaming data. Beyond these, for a much larger class of machine learning algorithms, you can learn a learning model offline (i.e. using historical data) and then apply the model online on streaming data. See the [MLlib](ml-guide.html) guide for more details.
+有关DataFrames的更多信息, 请参阅 [DataFrames 和 SQL 指南](sql-programming-guide.html).
 
 ***
 
-## Caching / Persistence
-Similar to RDDs, DStreams also allow developers to persist the stream's data in memory. That is,
-using the `persist()` method on a DStream will automatically persist every RDD of that DStream in
-memory. This is useful if the data in the DStream will be computed multiple times (e.g., multiple
-operations on the same data). For window-based operations like `reduceByWindow` and
-`reduceByKeyAndWindow` and state-based operations like `updateStateByKey`, this is implicitly true.
-Hence, DStreams generated by window-based operations are automatically persisted in memory, without
-the developer calling `persist()`.
+## MLlib 操作
 
-For input streams that receive data over the network (such as, Kafka, Flume, sockets, etc.), the
-default persistence level is set to replicate the data to two nodes for fault-tolerance.
+您还可以轻松使用 [MLlib](ml-guide.html) 提供的机器学习算法.
+首先, 有 streaming 机器学习算法（例如: [Streaming 线性回归](mllib-linear-methods.html#streaming-linear-regression), [Streaming KMeans](mllib-clustering.html#streaming-k-means) 等）, 其可以同时从 streaming 数据中学习, 并将该模型应用于 streaming 数据. 
+除此之外, 对于更大类的机器学习算法, 您可以离线学习一个学习模型（即使用历史数据）, 然后将该模型在线应用于流数据.有关详细信息, 请参阅 [MLlib指南](ml-guide.html).
 
-Note that, unlike RDDs, the default persistence level of DStreams keeps the data serialized in
-memory. This is further discussed in the [Performance Tuning](#memory-tuning) section. More
-information on different persistence levels can be found in the [Spark Programming Guide](programming-guide.html#rdd-persistence).
+***
+
+## 缓存 / 持久性
+
+与 RDD 类似, DStreams 还允许开发人员将流的数据保留在内存中. 
+也就是说, 在 DStream 上使用 `persist()` 方法会自动将该 DStream 的每个 RDD 保留在内存中. 
+如果 DStream 中的数据将被多次计算（例如, 相同数据上的多个操作）, 这将非常有用. 
+对于基于窗口的操作, 如 `reduceByWindow` 和 `reduceByKeyAndWindow` 以及基于状态的操作, 
+如 `updateStateByKey`, 这是隐含的.因此, 基于窗口的操作生成的 DStream 会自动保存在内存中, 而不需要开发人员调用 `persist()`.
+
+对于通过网络接收数据（例如: Kafka, Flume, sockets 等）的输入流, 默认持久性级别被设置为将数据复制到两个节点进行容错.
+
+请注意, 与 RDD 不同, DStreams 的默认持久性级别将数据序列化在内存中. 
+这在 [性能调优](#memory-tuning) 部分进一步讨论. 有关不同持久性级别的更多信息, 请参见 [Spark编程指南](programming-guide.html#rdd-persistence).
 
 ***
 
 ## Checkpointing
-A streaming application must operate 24/7 and hence must be resilient to failures unrelated
-to the application logic (e.g., system failures, JVM crashes, etc.). For this to be possible,
-Spark Streaming needs to *checkpoint* enough information to a fault-
-tolerant storage system such that it can recover from failures. There are two types of data
-that are checkpointed.
 
-- *Metadata checkpointing* - Saving of the information defining the streaming computation to
-  fault-tolerant storage like HDFS. This is used to recover from failure of the node running the
-  driver of the streaming application (discussed in detail later). Metadata includes:
-  +  *Configuration* - The configuration that was used to create the streaming application.
-  +  *DStream operations* - The set of DStream operations that define the streaming application.
-  +  *Incomplete batches* - Batches whose jobs are queued but have not completed yet.
-- *Data checkpointing* - Saving of the generated RDDs to reliable storage. This is necessary
-  in some *stateful* transformations that combine data across multiple batches. In such
-  transformations, the generated RDDs depend on RDDs of previous batches, which causes the length
-  of the dependency chain to keep increasing with time. To avoid such unbounded increases in recovery
-   time (proportional to dependency chain), intermediate RDDs of stateful transformations are periodically
-  *checkpointed* to reliable storage (e.g. HDFS) to cut off the dependency chains.
+ streaming 应用程序必须 24/7 运行, 因此必须对应用逻辑无关的故障（例如, 系统故障, JVM 崩溃等）具有弹性. 为了可以这样做, Spark Streaming 需要 *checkpoint* 足够的信息到容错存储系统, 以便可以从故障中恢复.*checkpoint* 有两种类型的数据.
 
-To summarize, metadata checkpointing is primarily needed for recovery from driver failures,
-whereas data or RDD checkpointing is necessary even for basic functioning if stateful
-transformations are used.
+- *Metadata checkpointing* - 将定义 streaming 计算的信息保存到容错存储（如 HDFS）中.这用于从运行 streaming 应用程序的 driver 的节点的故障中恢复（稍后详细讨论）. 元数据包括:
+  +  *Configuration* - 用于创建流应用程序的配置.
+  +  *DStream operations* - 定义 streaming 应用程序的 DStream 操作集.
+  +  *Incomplete batches* - 批量的job 排队但尚未完成.
+- *Data checkpointing* - 将生成的 RDD 保存到可靠的存储.这在一些将多个批次之间的数据进行组合的 *状态* 变换中是必需的.在这种转换中, 生成的 RDD 依赖于先前批次的 RDD, 这导致依赖链的长度随时间而增加.为了避免恢复时间的这种无限增加（与依赖关系链成比例）, 有状态转换的中间 RDD 会定期 *checkpoint* 到可靠的存储（例如 HDFS）以切断依赖关系链.
 
-#### When to enable Checkpointing
+总而言之, 元数据 checkpoint 主要用于从 driver 故障中恢复, 而数据或 RDD  checkpoint 对于基本功能（如果使用有状态转换）则是必需的.
+
+#### 何时启用 checkpoint 
 {:.no_toc}
 
-Checkpointing must be enabled for applications with any of the following requirements:
+对于具有以下任一要求的应用程序, 必须启用 checkpoint:
 
-- *Usage of stateful transformations* - If either `updateStateByKey` or `reduceByKeyAndWindow` (with
-  inverse function) is used in the application, then the checkpoint directory must be provided to
-  allow for periodic RDD checkpointing.
-- *Recovering from failures of the driver running the application* - Metadata checkpoints are used
-   to recover with progress information.
+- *使用状态转换* - 如果在应用程序中使用 `updateStateByKey`或 `reduceByKeyAndWindow`（具有反向功能）, 则必须提供 checkpoint 目录以允许定期的 RDD checkpoint.
+- *从运行应用程序的 driver 的故障中恢复* - 元数据 checkpoint 用于使用进度信息进行恢复.
 
-Note that simple streaming applications without the aforementioned stateful transformations can be
-run without enabling checkpointing. The recovery from driver failures will also be partial in
-that case (some received but unprocessed data may be lost). This is often acceptable and many run
-Spark Streaming applications in this way. Support for non-Hadoop environments is expected
-to improve in the future.
+请注意, 无需进行上述有状态转换的简单 streaming 应用程序即可运行, 无需启用 checkpoint. 
+在这种情况下, 驱动器故障的恢复也将是部分的（一些接收但未处理的数据可能会丢失）. 
+这通常是可以接受的, 许多运行 Spark Streaming 应用程序. 未来对非 Hadoop 环境的支持预计会有所改善.
 
-#### How to configure Checkpointing
+#### 如何配置 checkpoint
 {:.no_toc}
+可以通过在保存 checkpoint 信息的容错, 可靠的文件系统（例如, HDFS, S3等）中设置目录来启用 checkpoint. 
+这是通过使用 `streamingContext.checkpoint(checkpointDirectory)` 完成的. 这将允许您使用上述有状态转换.
+另外, 如果要使应用程序从 driver 故障中恢复, 您应该重写 streaming 应用程序以具有以下行为.
 
-Checkpointing can be enabled by setting a directory in a fault-tolerant,
-reliable file system (e.g., HDFS, S3, etc.) to which the checkpoint information will be saved.
-This is done by using `streamingContext.checkpoint(checkpointDirectory)`. This will allow you to
-use the aforementioned stateful transformations. Additionally,
-if you want to make the application recover from driver failures, you should rewrite your
-streaming application to have the following behavior.
-
-  + When the program is being started for the first time, it will create a new StreamingContext,
-    set up all the streams and then call start().
-  + When the program is being restarted after failure, it will re-create a StreamingContext
-    from the checkpoint data in the checkpoint directory.
+  + 当程序第一次启动时, 它将创建一个新的 StreamingContext, 设置所有流, 然后调用 start().
+  + 当程序在失败后重新启动时, 它将从 checkpoint 目录中的 checkpoint 数据重新创建一个 StreamingContext.
 
 <div class="codetabs">
 <div data-lang="scala" markdown="1">
 
-This behavior is made simple by using `StreamingContext.getOrCreate`. This is used as follows.
+使用 `StreamingContext.getOrCreate` 可以简化此行为. 这样使用如下.
 
 {% highlight scala %}
 // Function to create and setup a new StreamingContext
@@ -1701,26 +1570,20 @@ You can also explicitly create a `StreamingContext` from the checkpoint data and
 </div>
 </div>
 
-In addition to using `getOrCreate` one also needs to ensure that the driver process gets
-restarted automatically on failure. This can only be done by the deployment infrastructure that is
-used to run the application. This is further discussed in the
-[Deployment](#deploying-applications) section.
+除了使用 `getOrCreate` 之外, 还需要确保在失败时自动重新启动 driver 进程. 
+这只能由用于运行应用程序的部署基础架构完成. 这在 [部署](#deploying-applications) 部分进一步讨论.
 
-Note that checkpointing of RDDs incurs the cost of saving to reliable storage.
-This may cause an increase in the processing time of those batches where RDDs get checkpointed.
-Hence, the interval of
-checkpointing needs to be set carefully. At small batch sizes (say 1 second), checkpointing every
-batch may significantly reduce operation throughput. Conversely, checkpointing too infrequently
-causes the lineage and task sizes to grow, which may have detrimental effects. For stateful
-transformations that require RDD checkpointing, the default interval is a multiple of the
-batch interval that is at least 10 seconds. It can be set by using
-`dstream.checkpoint(checkpointInterval)`. Typically, a checkpoint interval of 5 - 10 sliding intervals of a DStream is a good setting to try.
+请注意, RDD 的 checkpoint 会导致保存到可靠存储的成本. 这可能会导致 RDD 得到 checkpoint 的批次的处理时间增加. 因此, 需要仔细设置 checkpoint 的间隔. 
+在小批量大小（例如: 1秒）, 检查每个批次可能会显着降低操作吞吐量. 相反,  checkpoint 太少会导致谱系和任务大小增长, 这可能会产生不利影响. 
+对于需要 RDD  checkpoint 的状态转换, 默认间隔是至少10秒的批间隔的倍数. 它可以通过使用 `dstream.checkpoint(checkpointInterval)` 进行设置. 通常, DStream 的5到10个滑动间隔的 checkpoint 间隔是一个很好的设置.
 
 ***
 
-## Accumulators, Broadcast Variables, and Checkpoints
+## Accumulators, Broadcast 变量, 和 Checkpoint
 
-[Accumulators](programming-guide.html#accumulators) and [Broadcast variables](programming-guide.html#broadcast-variables) cannot be recovered from checkpoint in Spark Streaming. If you enable checkpointing and use [Accumulators](programming-guide.html#accumulators) or [Broadcast variables](programming-guide.html#broadcast-variables) as well, you'll have to create lazily instantiated singleton instances for [Accumulators](programming-guide.html#accumulators) and [Broadcast variables](programming-guide.html#broadcast-variables) so that they can be re-instantiated after the driver restarts on failure. This is shown in the following example.
+在Spark Streaming中, 无法从 checkpoint 恢复 [Accumulators](programming-guide.html#accumulators) 和 [Broadcast 变量](programming-guide.html#broadcast-variables) .
+如果启用 checkpoint 并使用 [Accumulators](programming-guide.html#accumulators) 或 [Broadcast 变量](programming-guide.html#broadcast-variables) , 则必须为 [Accumulators](programming-guide.html#accumulators) 和 [Broadcast 变量](programming-guide.html#broadcast-variables) 创建延迟实例化的单例实例, 以便在 driver 重新启动失败后重新实例化. 
+这在下面的示例中显示: 
 
 <div class="codetabs">
 <div data-lang="scala" markdown="1">
@@ -1778,7 +1641,7 @@ wordCounts.foreachRDD { (rdd: RDD[(String, Int)], time: Time) =>
 
 {% endhighlight %}
 
-See the full [source code]({{site.SPARK_GITHUB_URL}}/blob/v{{site.SPARK_VERSION_SHORT}}/examples/src/main/scala/org/apache/spark/examples/streaming/RecoverableNetworkWordCount.scala).
+请参阅完整的 [源代码]({{site.SPARK_GITHUB_URL}}/blob/v{{site.SPARK_VERSION_SHORT}}/examples/src/main/scala/org/apache/spark/examples/streaming/RecoverableNetworkWordCount.scala).
 </div>
 <div data-lang="java" markdown="1">
 {% highlight java %}
@@ -1835,7 +1698,7 @@ wordCounts.foreachRDD((rdd, time) -> {
 
 {% endhighlight %}
 
-See the full [source code]({{site.SPARK_GITHUB_URL}}/blob/v{{site.SPARK_VERSION_SHORT}}/examples/src/main/java/org/apache/spark/examples/streaming/JavaRecoverableNetworkWordCount.java).
+请参阅完整的 [源代码]({{site.SPARK_GITHUB_URL}}/blob/v{{site.SPARK_VERSION_SHORT}}/examples/src/main/java/org/apache/spark/examples/streaming/JavaRecoverableNetworkWordCount.java).
 </div>
 <div data-lang="python" markdown="1">
 {% highlight python %}
@@ -1869,180 +1732,82 @@ wordCounts.foreachRDD(echo)
 
 {% endhighlight %}
 
-See the full [source code]({{site.SPARK_GITHUB_URL}}/blob/v{{site.SPARK_VERSION_SHORT}}/examples/src/main/python/streaming/recoverable_network_wordcount.py).
+请参阅完整的 [源代码]({{site.SPARK_GITHUB_URL}}/blob/v{{site.SPARK_VERSION_SHORT}}/examples/src/main/python/streaming/recoverable_network_wordcount.py).
 
 </div>
 </div>
 
 ***
 
-## Deploying Applications
-This section discusses the steps to deploy a Spark Streaming application.
+## 应用程序部署
 
-### Requirements
+本节讨论部署 Spark Streaming 应用程序的步骤.
+
+### 要求
 {:.no_toc}
 
-To run a Spark Streaming applications, you need to have the following.
+要运行 Spark Streaming 应用程序, 您需要具备以下功能.
 
-- *Cluster with a cluster manager* - This is the general requirement of any Spark application,
-  and discussed in detail in the [deployment guide](cluster-overview.html).
+- *集群管理器集群* - 这是任何 Spark 应用程序的一般要求, 并在 [部署指南](cluster-overview.html) 中详细讨论.
 
-- *Package the application JAR* - You have to compile your streaming application into a JAR.
-  If you are using [`spark-submit`](submitting-applications.html) to start the
-  application, then you will not need to provide Spark and Spark Streaming in the JAR. However,
-  if your application uses [advanced sources](#advanced-sources) (e.g. Kafka, Flume),
-  then you will have to package the extra artifact they link to, along with their dependencies,
-  in the JAR that is used to deploy the application. For example, an application using `KafkaUtils`
-  will have to include `spark-streaming-kafka-0-8_{{site.SCALA_BINARY_VERSION}}` and all its
-  transitive dependencies in the application JAR.
+- *打包应用程序 JAR* - 您必须将 streaming 应用程序编译为 JAR. 如果您正在使用 [`spark-submit`](submitting-applications.html) 启动应用程序, 则不需要在 JAR 中提供 Spark 和 Spark Streaming.但是, 如果您的应用程序使用高级资源（例如: Kafka, Flume）, 那么您将必须将他们链接的额外工件及其依赖项打包在用于部署应用程序的 JAR 中.例如, 使用 `KafkaUtils` 的应用程序必须在应用程序 JAR 中包含 `spark-streaming-kafka-0-8_{{site.SCALA_BINARY_VERSION}}` 及其所有传递依赖关系.
 
-- *Configuring sufficient memory for the executors* - Since the received data must be stored in
-  memory, the executors must be configured with sufficient memory to hold the received data. Note
-  that if you are doing 10 minute window operations, the system has to keep at least last 10 minutes
-  of data in memory. So the memory requirements for the application depends on the operations
-  used in it.
+- *为 executor 配置足够的内存* - 由于接收到的数据必须存储在内存中, 所以 executor 必须配置足够的内存来保存接收到的数据. 请注意, 如果您正在进行10分钟的窗口操作, 系统必须至少保留最近10分钟的内存中的数据. 因此, 应用程序的内存要求取决于其中使用的操作.
 
-- *Configuring checkpointing* - If the stream application requires it, then a directory in the
-  Hadoop API compatible fault-tolerant storage (e.g. HDFS, S3, etc.) must be configured as the
-  checkpoint directory and the streaming application written in a way that checkpoint
-  information can be used for failure recovery. See the [checkpointing](#checkpointing) section
-  for more details.
+- *配置 checkpoint* - 如果 streaming 应用程序需要它, 则 Hadoop API 兼容容错存储（例如：HDFS, S3等）中的目录必须配置为 checkpoint 目录, 并且流程应用程序以 checkpoint 信息的方式编写 用于故障恢复. 有关详细信息, 请参阅 [checkpoint](#checkpointing) 部分.
 
-- *Configuring automatic restart of the application driver* - To automatically recover from a
-  driver failure, the deployment infrastructure that is
-  used to run the streaming application must monitor the driver process and relaunch the driver
-  if it fails. Different [cluster managers](cluster-overview.html#cluster-manager-types)
-  have different tools to achieve this.
-    + *Spark Standalone* - A Spark application driver can be submitted to run within the Spark
-      Standalone cluster (see
-      [cluster deploy mode](spark-standalone.html#launching-spark-applications)), that is, the
-      application driver itself runs on one of the worker nodes. Furthermore, the
-      Standalone cluster manager can be instructed to *supervise* the driver,
-      and relaunch it if the driver fails either due to non-zero exit code,
-      or due to failure of the node running the driver. See *cluster mode* and *supervise* in the
-      [Spark Standalone guide](spark-standalone.html) for more details.
-    + *YARN* - Yarn supports a similar mechanism for automatically restarting an application.
-      Please refer to YARN documentation for more details.
-    + *Mesos* - [Marathon](https://github.com/mesosphere/marathon) has been used to achieve this
-      with Mesos.
+- *配置应用程序 driver 的自动重新启动* - 要从 driver 故障自动恢复, 用于运行流应用程序的部署基础架构必须监视 driver 进程, 并在 driver 发生故障时重新启动 driver.不同的 [集群管理者](cluster-overview.html#cluster-manager-types) 有不同的工具来实现这一点.
+    + *Spark Standalone* - 可以提交 Spark 应用程序 driver 以在Spark Standalone集群中运行（请参阅 [集群部署模式](spark-standalone.html#launching-spark-applications) ）, 即应用程序 driver 本身在其中一个工作节点上运行. 此外, 可以指示独立的群集管理器来监督 driver, 如果由于非零退出代码而导致 driver 发生故障, 或由于运行 driver 的节点发生故障, 则可以重新启动它. 有关详细信息, 请参阅 [Spark Standalone 指南]](spark-standalone.html) 中的群集模式和监督.
+    + *YARN* - Yarn 支持类似的机制来自动重新启动应用程序.有关详细信息, 请参阅 YARN文档.
+    + *Mesos* - [Marathon](https://github.com/mesosphere/marathon) 已被用来实现这一点与Mesos.
 
-- *Configuring write ahead logs* - Since Spark 1.2,
-  we have introduced _write ahead logs_ for achieving strong
-  fault-tolerance guarantees. If enabled,  all the data received from a receiver gets written into
-  a write ahead log in the configuration checkpoint directory. This prevents data loss on driver
-  recovery, thus ensuring zero data loss (discussed in detail in the
-  [Fault-tolerance Semantics](#fault-tolerance-semantics) section). This can be enabled by setting
-  the [configuration parameter](configuration.html#spark-streaming)
-  `spark.streaming.receiver.writeAheadLog.enable` to `true`. However, these stronger semantics may
-  come at the cost of the receiving throughput of individual receivers. This can be corrected by
-  running [more receivers in parallel](#level-of-parallelism-in-data-receiving)
-  to increase aggregate throughput. Additionally, it is recommended that the replication of the
-  received data within Spark be disabled when the write ahead log is enabled as the log is already
-  stored in a replicated storage system. This can be done by setting the storage level for the
-  input stream to `StorageLevel.MEMORY_AND_DISK_SER`. While using S3 (or any file system that
-  does not support flushing) for _write ahead logs_, please remember to enable
-  `spark.streaming.driver.writeAheadLog.closeFileAfterWrite` and
-  `spark.streaming.receiver.writeAheadLog.closeFileAfterWrite`. See
-  [Spark Streaming Configuration](configuration.html#spark-streaming) for more details.
-  Note that Spark will not encrypt data written to the write ahead log when I/O encryption is
-  enabled. If encryption of the write ahead log data is desired, it should be stored in a file
-  system that supports encryption natively.
+- *配置预写日志* - 自 Spark 1.2 以来, 我们引入了写入日志来实现强大的容错保证.如果启用, 则从 receiver 接收的所有数据都将写入配置 checkpoint 目录中的写入日志.这可以防止 driver 恢复时的数据丢失, 从而确保零数据丢失（在 [容错语义](#fault-tolerance-semantics) 部分中详细讨论）.可以通过将 [配置参数](configuration.html#spark-streaming) `spark.streaming.receiver.writeAheadLog.enable` 设置为 `true`来启用此功能.然而, 这些更强的语义可能以单个 receiver 的接收吞吐量为代价.通过 [并行运行更多的 receiver](#level-of-parallelism-in-data-receiving) 可以纠正这一点, 以增加总吞吐量.另外, 建议在启用写入日志时, 在日志已经存储在复制的存储系统中时, 禁用在 Spark 中接收到的数据的复制.这可以通过将输入流的存储级别设置为 `StorageLevel.MEMORY_AND_DISK_SER` 来完成.使用 S3（或任何不支持刷新的文件系统）写入日志时, 请记住启用 `spark.streaming.driver.writeAheadLog.closeFileAfterWrite` 和`spark.streaming.receiver.writeAheadLog.closeFileAfterWrite`.有关详细信息, 请参阅 [Spark Streaming配](configuration.html#spark-streaming).请注意, 启用 I/O 加密时, Spark 不会将写入写入日志的数据加密.如果需要对提前记录数据进行加密, 则应将其存储在本地支持加密的文件系统中.
 
-- *Setting the max receiving rate* - If the cluster resources is not large enough for the streaming
-  application to process data as fast as it is being received, the receivers can be rate limited
-  by setting a maximum rate limit in terms of records / sec.
-  See the [configuration parameters](configuration.html#spark-streaming)
-  `spark.streaming.receiver.maxRate` for receivers and `spark.streaming.kafka.maxRatePerPartition`
-  for Direct Kafka approach. In Spark 1.5, we have introduced a feature called *backpressure* that
-  eliminate the need to set this rate limit, as Spark Streaming automatically figures out the
-  rate limits and dynamically adjusts them if the processing conditions change. This backpressure
-  can be enabled by setting the [configuration parameter](configuration.html#spark-streaming)
-  `spark.streaming.backpressure.enabled` to `true`.
+- *设置最大接收速率* - 如果集群资源不够大, streaming 应用程序能够像接收到的那样快速处理数据, 则可以通过设置 记录/秒 的最大速率限制来对 receiver 进行速率限制. 请参阅 receiver 的 `spark.streaming.receiver.maxRate` 和用于 Direct Kafka 方法的 `spark.streaming.kafka.maxRatePerPartition` 的 [配置参数](configuration.html#spark-streaming). 在Spark 1.5中, 我们引入了一个称为背压的功能, 无需设置此速率限制, 因为Spark Streaming会自动计算速率限制, 并在处理条件发生变化时动态调整速率限制. 可以通过将 [配置参数](configuration.html#spark-streaming) `spark.streaming.backpressure.enabled` 设置为 `true` 来启用此 backpressure.
 
-### Upgrading Application Code
+### 升级应用程序代码
 {:.no_toc}
 
-If a running Spark Streaming application needs to be upgraded with new
-application code, then there are two possible mechanisms.
+如果运行的 Spark Streaming 应用程序需要使用新的应用程序代码进行升级, 则有两种可能的机制.
 
-- The upgraded Spark Streaming application is started and run in parallel to the existing application.
-Once the new one (receiving the same data as the old one) has been warmed up and is ready
-for prime time, the old one be can be brought down. Note that this can be done for data sources that support
-sending the data to two destinations (i.e., the earlier and upgraded applications).
+- 升级后的 Spark Streaming 应用程序与现有应用程序并行启动并运行.一旦新的（接收与旧的数据相同的数据）已经升温并准备好黄金时段, 旧的可以被关掉.请注意, 这可以用于支持将数据发送到两个目的地（即较早和已升级的应用程序）的数据源.
 
-- The existing application is shutdown gracefully (see
-[`StreamingContext.stop(...)`](api/scala/index.html#org.apache.spark.streaming.StreamingContext)
-or [`JavaStreamingContext.stop(...)`](api/java/index.html?org/apache/spark/streaming/api/java/JavaStreamingContext.html)
-for graceful shutdown options) which ensure data that has been received is completely
-processed before shutdown. Then the
-upgraded application can be started, which will start processing from the same point where the earlier
-application left off. Note that this can be done only with input sources that support source-side buffering
-(like Kafka, and Flume) as data needs to be buffered while the previous application was down and
-the upgraded application is not yet up. And restarting from earlier checkpoint
-information of pre-upgrade code cannot be done. The checkpoint information essentially
-contains serialized Scala/Java/Python objects and trying to deserialize objects with new,
-modified classes may lead to errors. In this case, either start the upgraded app with a different
-checkpoint directory, or delete the previous checkpoint directory.
+- 现有应用程序正常关闭（请参阅 [`StreamingContext.stop(...)`](api/scala/index.html#org.apache.spark.streaming.StreamingContext) 或 [`JavaStreamingContext.stop(...)`](api/java/index.html?org/apache/spark/streaming/api/java/JavaStreamingContext.html) 以获取正常的关闭选项）, 以确保已关闭的数据在关闭之前被完全处理.然后可以启动升级的应用程序, 这将从较早的应用程序停止的同一点开始处理.请注意, 只有在支持源端缓冲的输入源（如: Kafka 和 Flume）时才可以进行此操作, 因为数据需要在先前的应用程序关闭并且升级的应用程序尚未启动时进行缓冲.从升级前代码的早期 checkpoint 信息重新启动不能完成.checkpoint 信息基本上包含序列化的 Scala/Java/Python 对象, 并尝试使用新的修改的类反序列化对象可能会导致错误.在这种情况下, 可以使用不同的 checkpoint 目录启动升级的应用程序, 也可以删除以前的 checkpoint 目录.
 
 ***
 
-## Monitoring Applications
-Beyond Spark's [monitoring capabilities](monitoring.html), there are additional capabilities
-specific to Spark Streaming. When a StreamingContext is used, the
-[Spark web UI](monitoring.html#web-interfaces) shows
-an additional `Streaming` tab which shows statistics about running receivers (whether
-receivers are active, number of records received, receiver error, etc.)
-and completed batches (batch processing times, queueing delays, etc.). This can be used to
-monitor the progress of the streaming application.
+## Monitoring Applications （监控应用程序）
+除了 Spark 的 [monitoring capabilities（监控功能）](monitoring.html) , 还有其他功能特定于 Spark Streaming .当使用 StreamingContext 时, [Spark web UI](monitoring.html#web-interfaces) 显示一个额外的 `Streaming` 选项卡, 显示 running receivers （运行接收器）的统计信息（无论是 receivers （接收器）是否处于 active （活动状态）, 接收到的 records （记录）数,  receiver error （接收器错误）等）并完成 batches （批次）（batch processing times （批处理时间）,  queueing delays （排队延迟）等）.这可以用来监视 streaming application （流应用程序）的进度.
 
-The following two metrics in web UI are particularly important:
+web UI 中的以下两个 metrics （指标）特别重要:
 
-- *Processing Time* - The time to process each batch of data.
-- *Scheduling Delay* - the time a batch waits in a queue for the processing of previous batches
-  to finish.
+- *Processing Time （处理时间）* - 处理每 batch （批）数据的时间 .
+- *Scheduling Delay （调度延迟）* - batch （批处理）在 queue （队列）中等待处理 previous batches （以前批次）完成的时间.
 
-If the batch processing time is consistently more than the batch interval and/or the queueing
-delay keeps increasing, then it indicates that the system is
-not able to process the batches as fast they are being generated and is falling behind.
-In that case, consider
-[reducing](#reducing-the-batch-processing-times) the batch processing time.
+如果 batch processing time （批处理时间）始终 more than （超过） batch interval （批间隔） and/or queueing delay （排队延迟）不断增加, 表示系统是无法快速 process the batches （处理批次）, 并且正在 falling behind （落后）.
+在这种情况下, 请考虑 [reducing （减少）](#reducing-the-batch-processing-times) batch processing time （批处理时间）.
 
-The progress of a Spark Streaming program can also be monitored using the
-[StreamingListener](api/scala/index.html#org.apache.spark.streaming.scheduler.StreamingListener) interface,
-which allows you to get receiver status and processing times. Note that this is a developer API
-and it is likely to be improved upon (i.e., more information reported) in the future.
+Spark Streaming 程序的进展也可以使用 [StreamingListener](api/scala/index.html#org.apache.spark.streaming.scheduler.StreamingListener) 接口, 这允许您获得 receiver status （接收器状态）和 processing times （处理时间）.请注意, 这是一个开发人员 API 并且将来可能会改善（即, 更多的信息报告）.
 
 ***************************************************************************************************
 ***************************************************************************************************
 
-# Performance Tuning
-Getting the best performance out of a Spark Streaming application on a cluster requires a bit of
-tuning. This section explains a number of the parameters and configurations that can be tuned to
-improve the performance of you application. At a high level, you need to consider two things:
+# Performance Tuning （性能调优）
+在集群上的 Spark Streaming application 中获得最佳性能需要一些调整.本节介绍了可调整的多个 parameters （参数）和 configurations （配置）提高你的应用程序性能.在高层次上, 你需要考虑两件事情:
 
-1. Reducing the processing time of each batch of data by efficiently using cluster resources.
+1. 通过有效利用集群资源,  Reducing the processing time of each batch of data （减少每批数据的处理时间）.
 
-2. Setting the right batch size such that the batches of data can be processed as fast as they
-  	are received (that is, data processing keeps up with the data ingestion).
+2. 设置正确的 batch size （批量大小）, 以便 batches of data （批量的数据）可以像 received （被接收）处理一样快（即 data processing （数据处理）与 data ingestion （数据摄取）保持一致）.
 
-## Reducing the Batch Processing Times
-There are a number of optimizations that can be done in Spark to minimize the processing time of
-each batch. These have been discussed in detail in the [Tuning Guide](tuning.html). This section
-highlights some of the most important ones.
+## Reducing the Batch Processing Times （减少批处理时间）
+在 Spark 中可以进行一些优化, 以 minimize the processing time of
+each batch （最小化每批处理时间）.这些已在 [Tuning Guide （调优指南）](tuning.html) 中详细讨论过.本节突出了一些最重要的.
 
-### Level of Parallelism in Data Receiving
+### Level of Parallelism in Data Receiving （数据接收中的并行级别）
 {:.no_toc}
-Receiving data over the network (like Kafka, Flume, socket, etc.) requires the data to be deserialized
-and stored in Spark. If the data receiving becomes a bottleneck in the system, then consider
-parallelizing the data receiving. Note that each input DStream
-creates a single receiver (running on a worker machine) that receives a single stream of data.
-Receiving multiple data streams can therefore be achieved by creating multiple input DStreams
-and configuring them to receive different partitions of the data stream from the source(s).
-For example, a single Kafka input DStream receiving two topics of data can be split into two
-Kafka input streams, each receiving only one topic. This would run two receivers,
-allowing data to be received in parallel, thus increasing overall throughput. These multiple
-DStreams can be unioned together to create a single DStream. Then the transformations that were
-being applied on a single input DStream can be applied on the unified stream. This is done as follows.
+通过网络接收数据（如Kafka, Flume, socket 等）需要 deserialized （反序列化）数据并存储在 Spark 中.如果数据接收成为系统的瓶颈, 那么考虑一下 parallelizing the data receiving （并行化数据接收）.注意每个 input DStream 创建接收 single stream of data （单个数据流）的 single receiver （单个接收器）（在 work machine 上运行）.
+因此, 可以通过创建多个 input DStreams 来实现 Receiving multiple data streams （接收多个数据流）并配置它们以从 source(s) 接收 data stream （数据流）的 different partitions （不同分区）.例如, 接收 two topics of data （两个数据主题）的单个Kafka input DStream 可以分为两个 Kafka input streams （输入流）, 每个只接收一个 topic （主题）.这将运行两个 receivers （接收器）, 允许 in parallel （并行）接收数据, 从而提高 overall throughput （总体吞吐量）.这些 multiple
+DStreams 可以 unioned （联合起来）创建一个 single DStream .然后 transformations （转化）为应用于 single input DStream 可以应用于 unified stream .如下这样做.
 
 <div class="codetabs">
 <div data-lang="scala" markdown="1">
@@ -2074,272 +1839,202 @@ unifiedStream.pprint()
 </div>
 </div>
 
-Another parameter that should be considered is the receiver's block interval,
-which is determined by the [configuration parameter](configuration.html#spark-streaming)
-`spark.streaming.blockInterval`. For most receivers, the received data is coalesced together into
-blocks of data before storing inside Spark's memory. The number of blocks in each batch
-determines the number of tasks that will be used to process 
-the received data in a map-like transformation. The number of tasks per receiver per batch will be
-approximately (batch interval / block interval). For example, block interval of 200 ms will
-create 10 tasks per 2 second batches. If the number of tasks is too low (that is, less than the number
-of cores per machine), then it will be inefficient as all available cores will not be used to
-process the data. To increase the number of tasks for a given batch interval, reduce the
-block interval. However, the recommended minimum value of block interval is about 50 ms,
-below which the task launching overheads may be a problem.
+应考虑的另一个参数是 receiver's block interval （接收器的块间隔）, 这由[configuration parameter （配置参数）](configuration.html#spark-streaming) 的 `spark.streaming.blockInterval` 决定.对于大多数 receivers （接收器）, 接收到的数据 coalesced （合并）在一起存储在 Spark 内存之前的 blocks of data （数据块）.每个 batch （批次）中的 blocks （块）数确定将用于处理接收到的数据以 map-like （类似与 map 形式的） transformation （转换）的 task （任务）的数量.每个 receiver （接收器）每 batch （批次）的任务数量将是大约（ batch interval （批间隔）/ block interval （块间隔））.例如, 200 ms的 block interval （块间隔）每 2 秒 batches （批次）创建 10 个 tasks （任务）.如果 tasks （任务）数量太少（即少于每个机器的内核数量）, 那么它将无效, 因为所有可用的内核都不会被使用处理数据.要增加 given batch interval （给定批间隔）的 tasks （任务）数量, 请减少 block interval （块间​​隔）.但是, 推荐的 block interval （块间隔）最小值约为 50ms , 低于此任务启动开销可能是一个问题.
 
-An alternative to receiving data with multiple input streams / receivers is to explicitly repartition
-the input data stream (using `inputStream.repartition(<number of partitions>)`).
-This distributes the received batches of data across the specified number of machines in the cluster
-before further processing.
+使用 multiple input streams （多个输入流）/ receivers （接收器）接收数据的替代方法是明确 repartition （重新分配） input data stream （输入数据流）（使用 `inputStream.repartition(<number of partitions>)` ）.
+这会在 further processing （进一步处理）之前将 received batches of data （收到的批次数据） distributes （分发）到集群中指定数量的计算机.
 
-### Level of Parallelism in Data Processing
+### Level of Parallelism in Data Processing （数据处理中的并行度水平）
 {:.no_toc}
-Cluster resources can be under-utilized if the number of parallel tasks used in any stage of the
-computation is not high enough. For example, for distributed reduce operations like `reduceByKey`
-and `reduceByKeyAndWindow`, the default number of parallel tasks is controlled by
-the `spark.default.parallelism` [configuration property](configuration.html#spark-properties). You
-can pass the level of parallelism as an argument (see
-[`PairDStreamFunctions`](api/scala/index.html#org.apache.spark.streaming.dstream.PairDStreamFunctions)
-documentation), or set the `spark.default.parallelism`
-[configuration property](configuration.html#spark-properties) to change the default.
+如果在任何 computation （计算）阶段中使用 number of parallel tasks （并行任务的数量）, 则 Cluster resources （集群资源）可能未得到充分利用. 例如, 对于 distributed reduce （分布式 reduce）操作, 如 `reduceByKey` 和 `reduceByKeyAndWindow` , 默认并行任务的数量由 `spark.default.parallelism` [configuration property](configuration.html#spark-properties) 控制. 您
+可以通过 parallelism （并行度）作为参数（见 [`PairDStreamFunctions`](api/scala/index.html#org.apache.spark.streaming.dstream.PairDStreamFunctions)
+ 文档 ）, 或设置 `spark.default.parallelism`
+[configuration property](configuration.html#spark-properties) 更改默认值.
 
-### Data Serialization
+### Data Serialization （数据序列化）
 {:.no_toc}
-The overheads of data serialization can be reduced by tuning the serialization formats. In the case of streaming, there are two types of data that are being serialized.
+可以通过调优 serialization formats （序列化格式）来减少数据 serialization （序列化）的开销.在 streaming 的情况下, 有两种类型的数据被 serialized （序列化）.
 
-* **Input data**: By default, the input data received through Receivers is stored in the executors' memory with [StorageLevel.MEMORY_AND_DISK_SER_2](api/scala/index.html#org.apache.spark.storage.StorageLevel$). That is, the data is serialized into bytes to reduce GC overheads, and replicated for tolerating executor failures. Also, the data is kept first in memory, and spilled over to disk only if the memory is insufficient to hold all of the input data necessary for the streaming computation. This serialization obviously has overheads -- the receiver must deserialize the received data and re-serialize it using Spark's serialization format. 
+* **Input data （输入数据）**: 默认情况下, 通过 Receivers 接收的 input data （输入数据）通过 [StorageLevel.MEMORY_AND_DISK_SER_2](api/scala/index.html#org.apache.spark.storage.StorageLevel$) 存储在 executors 的内存中.也就是说, 将数据 serialized （序列化）为 bytes （字节）以减少 GC 开销, 并复制以容忍 executor failures （执行器故障）.此外, 数据首先保留在内存中, 并且只有在内存不足以容纳 streaming computation （流计算）所需的所有输入数据时才会 spilled over （溢出）到磁盘.这个 serialization （序列化）显然具有开销 - receiver （接收器）必须使接收的数据 deserialize （反序列化）, 并使用 Spark 的 serialization format （序列化格式）重新序列化它.
 
-* **Persisted RDDs generated by Streaming Operations**: RDDs generated by streaming computations may be persisted in memory. For example, window operations persist data in memory as they would be processed multiple times. However, unlike the Spark Core default of [StorageLevel.MEMORY_ONLY](api/scala/index.html#org.apache.spark.storage.StorageLevel$), persisted RDDs generated by streaming computations are persisted with [StorageLevel.MEMORY_ONLY_SER](api/scala/index.html#org.apache.spark.storage.StorageLevel$) (i.e. serialized) by default to minimize GC overheads.
+* **Persisted RDDs generated by Streaming Operations （流式操作生成的持久 RDDs）**: 通过 streaming computations （流式计算）生成的 RDD 可能会持久存储在内存中.例如,  window operations （窗口操作）会将数据保留在内存中, 因为它们将被处理多次.但是, 与 [StorageLevel.MEMORY_ONLY](api/scala/index.html#org.apache.spark.storage.StorageLevel$) 的 Spark Core 默认情况不同, 通过流式计算生成的持久化 RDD 将以 [StorageLevel.MEMORY_ONLY_SER](api/scala/index.html#org.apache.spark.storage.StorageLevel$) （即序列化）, 以最小化 GC 开销.
 
-In both cases, using Kryo serialization can reduce both CPU and memory overheads. See the [Spark Tuning Guide](tuning.html#data-serialization) for more details. For Kryo, consider registering custom classes, and disabling object reference tracking (see Kryo-related configurations in the [Configuration Guide](configuration.html#compression-and-serialization)).
+在这两种情况下, 使用 Kryo serialization （Kryo 序列化）可以减少 CPU 和内存开销.有关详细信息, 请参阅 [Spark Tuning Guide](tuning.html#data-serialization) .对于 Kryo , 请考虑 registering custom classes , 并禁用对象引用跟踪（请参阅 [Configuration Guide](configuration.html#compression-and-serialization) 中的 Kryo 相关配置）.
 
-In specific cases where the amount of data that needs to be retained for the streaming application is not large, it may be feasible to persist data (both types) as deserialized objects without incurring excessive GC overheads. For example, if you are using batch intervals of a few seconds and no window operations, then you can try disabling serialization in persisted data by explicitly setting the storage level accordingly. This would reduce the CPU overheads due to serialization, potentially improving performance without too much GC overheads.
+在 streaming application 需要保留的数据量不大的特定情况下, 可以将数据（两种类型）作为 deserialized objects （反序列化对象）持久化, 而不会导致过多的 GC 开销.例如, 如果您使用几秒钟的 batch intervals （批次间隔）并且没有 window operations （窗口操作）, 那么可以通过明确地相应地设置 storage level （存储级别）来尝试禁用 serialization in persisted data （持久化数据中的序列化）.这将减少由于序列化造成的 CPU 开销, 潜在地提高性能, 而不需要太多的 GC 开销.
 
-### Task Launching Overheads
+### Task Launching Overheads （任务启动开销）
 {:.no_toc}
-If the number of tasks launched per second is high (say, 50 or more per second), then the overhead
-of sending out tasks to the slaves may be significant and will make it hard to achieve sub-second
-latencies. The overhead can be reduced by the following changes:
+如果每秒启动的任务数量很高（比如每秒 50 个或更多）, 那么这个开销向 slaves 发送任务可能是重要的, 并且将难以实现 sub-second latencies （次要的延迟）.可以通过以下更改减少开销:
 
-* **Execution mode**: Running Spark in Standalone mode or coarse-grained Mesos mode leads to
-  better task launch times than the fine-grained Mesos mode. Please refer to the
-  [Running on Mesos guide](running-on-mesos.html) for more details.
+* **Execution mode （执行模式）**: 以 Standalone mode （独立模式）或 coarse-grained Mesos 模式运行 Spark 比 fine-grained Mesos 模式更好的任务启动时间.有关详细信息, 请参阅 [Running on Mesos guide](running-on-mesos.html) .
 
-These changes may reduce batch processing time by 100s of milliseconds,
-thus allowing sub-second batch size to be viable.
+这些更改可能会将 batch processing time （批处理时间）缩短 100 毫秒, 从而允许 sub-second batch size （次秒批次大小）是可行的.
 
 ***
 
-## Setting the Right Batch Interval
-For a Spark Streaming application running on a cluster to be stable, the system should be able to
-process data as fast as it is being received. In other words, batches of data should be processed
-as fast as they are being generated. Whether this is true for an application can be found by
-[monitoring](#monitoring-applications) the processing times in the streaming web UI, where the batch
-processing time should be less than the batch interval.
+## Setting the Right Batch Interval （设置正确的批次间隔）
+对于在集群上稳定地运行的 Spark Streaming application, 该系统应该能够处理数据尽可能快地被接收.换句话说, 应该处理批次的数据就像生成它们一样快.这是否适用于 application 可以在 [monitoring](#monitoring-applications) streaming web UI 中的 processing times 中被找到,  processing time （批处理处理时间）应小于 batch interval （批间隔）.
 
-Depending on the nature of the streaming
-computation, the batch interval used may have significant impact on the data rates that can be
-sustained by the application on a fixed set of cluster resources. For example, let us
-consider the earlier WordCountNetwork example. For a particular data rate, the system may be able
-to keep up with reporting word counts every 2 seconds (i.e., batch interval of 2 seconds), but not
-every 500 milliseconds. So the batch interval needs to be set such that the expected data rate in
-production can be sustained.
+取决于 streaming computation （流式计算）的性质, 使用的 batch interval （批次间隔）可能对处理由应用程序持续一组固定的 cluster resources （集群资源）的数据速率有重大的影响.例如, 让我们考虑早期的 WordCountNetwork 示例.对于特定的 data rate （数据速率）, 系统可能能够跟踪每 2 秒报告 word counts （即 2 秒的 batch interval （批次间隔））, 但不能每 500 毫秒.因此, 需要设置 batch interval （批次间隔）, 使预期的数据速率在生产可以持续.
 
-A good approach to figure out the right batch size for your application is to test it with a
-conservative batch interval (say, 5-10 seconds) and a low data rate. To verify whether the system
-is able to keep up with the data rate, you can check the value of the end-to-end delay experienced
-by each processed batch (either look for "Total delay" in Spark driver log4j logs, or use the
-[StreamingListener](api/scala/index.html#org.apache.spark.streaming.scheduler.StreamingListener)
-interface).
-If the delay is maintained to be comparable to the batch size, then system is stable. Otherwise,
-if the delay is continuously increasing, it means that the system is unable to keep up and it
-therefore unstable. Once you have an idea of a stable configuration, you can try increasing the
-data rate and/or reducing the batch size. Note that a momentary increase in the delay due to
-temporary data rate increases may be fine as long as the delay reduces back to a low value
-(i.e., less than batch size).
+为您的应用程序找出正确的 batch size （批量大小）的一个好方法是使用进行测试 conservative batch interval （保守的批次间隔）（例如 5-10 秒）和 low data rate （低数据速率）.验证是否系统能够跟上 data rate （数据速率）, 可以检查遇到的 end-to-end delay （端到端延迟）的值通过每个 processed batch （处理的批次）（在 Spark driver log4j 日志中查找 "Total delay" , 或使用 [StreamingListener](api/scala/index.html#org.apache.spark.streaming.scheduler.StreamingListener)
+ 接口）.
+如果 delay （延迟）保持与 batch size （批量大小）相当, 那么系统是稳定的.除此以外, 如果延迟不断增加, 则意味着系统无法跟上, 因此不稳定.一旦你有一个 stable configuration （稳定的配置）的想法, 你可以尝试增加 data rate and/or 减少 batch size .请注意,  momentary increase （瞬时增加）由于延迟暂时增加只要延迟降低到 low value （低值）, 临时数据速率增加就可以很好（即, 小于 batch size （批量大小））.
 
 ***
 
-## Memory Tuning
-Tuning the memory usage and GC behavior of Spark applications has been discussed in great detail
-in the [Tuning Guide](tuning.html#memory-tuning). It is strongly recommended that you read that. In this section, we discuss a few tuning parameters specifically in the context of Spark Streaming applications.
+## Memory Tuning （内存调优）
+调整 Spark 应用程序的内存使用情况和 GC behavior 已经有很多的讨论在 [Tuning Guide](tuning.html#memory-tuning) 中.我们强烈建议您阅读一下.在本节中, 我们将在 Spark Streaming applications 的上下文中讨论一些 tuning parameters （调优参数）.
 
-The amount of cluster memory required by a Spark Streaming application depends heavily on the type of transformations used. For example, if you want to use a window operation on the last 10 minutes of data, then your cluster should have sufficient memory to hold 10 minutes worth of data in memory. Or if you want to use `updateStateByKey` with a large number of keys, then the necessary memory  will be high. On the contrary, if you want to do a simple map-filter-store operation, then the necessary memory will be low.
+Spark Streaming application 所需的集群内存量在很大程度上取决于所使用的 transformations 类型.例如, 如果要在最近 10 分钟的数据中使用 window operation （窗口操作）, 那么您的集群应该有足够的内存来容纳内存中 10 分钟的数据.或者如果要使用大量 keys 的 `updateStateByKey` , 那么必要的内存将会很高.相反, 如果你想做一个简单的 map-filter-store 操作, 那么所需的内存就会很低.
 
-In general, since the data received through receivers is stored with StorageLevel.MEMORY_AND_DISK_SER_2, the data that does not fit in memory will spill over to the disk. This may reduce the performance of the streaming application, and hence it is advised to provide sufficient memory as required by your streaming application. Its best to try and see the memory usage on a small scale and estimate accordingly. 
+一般来说, 由于通过 receivers （接收器）接收的数据与 StorageLevel.MEMORY_AND_DISK_SER_2 一起存储, 所以不适合内存的数据将会 spill over （溢出）到磁盘上.这可能会降低 streaming application （流式应用程序）的性能, 因此建议您提供足够的 streaming application （流量应用程序）所需的内存.最好仔细查看内存使用量并相应地进行估算. 
 
-Another aspect of memory tuning is garbage collection. For a streaming application that requires low latency, it is undesirable to have large pauses caused by JVM Garbage Collection. 
+memory tuning （内存调优）的另一个方面是 garbage collection （垃圾收集）.对于需要低延迟的 streaming application , 由 JVM Garbage Collection 引起的大量暂停是不希望的.
 
-There are a few parameters that can help you tune the memory usage and GC overheads:
+有几个 parameters （参数）可以帮助您调整 memory usage （内存使用量）和 GC 开销:
 
-* **Persistence Level of DStreams**: As mentioned earlier in the [Data Serialization](#data-serialization) section, the input data and RDDs are by default persisted as serialized bytes. This reduces both the memory usage and GC overheads, compared to deserialized persistence. Enabling Kryo serialization further reduces serialized sizes and memory usage. Further reduction in memory usage can be achieved with compression (see the Spark configuration `spark.rdd.compress`), at the cost of CPU time.
+* **Persistence Level of DStreams （DStreams 的持久性级别）**: 如前面在 [Data Serialization](#data-serialization) 部分中所述,  input data 和 RDD 默认保持为 serialized bytes （序列化字节）.与 deserialized persistence （反序列化持久性）相比, 这减少了内存使用量和 GC 开销.启用 Kryo serialization 进一步减少了 serialized sizes （序列化大小）和 memory usage （内存使用）.可以通过 compression （压缩）来实现内存使用的进一步减少（参见Spark配置 `spark.rdd.compress` ）, 代价是 CPU 时间.
 
-* **Clearing old data**: By default, all input data and persisted RDDs generated by DStream transformations are automatically cleared. Spark Streaming decides when to clear the data based on the transformations that are used. For example, if you are using a window operation of 10 minutes, then Spark Streaming will keep around the last 10 minutes of data, and actively throw away older data. 
-Data can be retained for a longer duration (e.g. interactively querying older data) by setting `streamingContext.remember`.
+* **Clearing old data （清除旧数据）**: 默认情况下, DStream 转换生成的所有 input data 和 persisted RDDs 将自动清除. Spark Streaming 决定何时根据所使用的 transformations （转换）来清除数据.例如, 如果您使用 10 分钟的 window operation （窗口操作）, 则 Spark Streaming 将保留最近 10 分钟的数据, 并主动丢弃旧数据.
+数据可以通过设置 `streamingContext.remember` 保持更长的持续时间（例如交互式查询旧数据）.
 
-* **CMS Garbage Collector**: Use of the concurrent mark-and-sweep GC is strongly recommended for keeping GC-related pauses consistently low. Even though concurrent GC is known to reduce the
-overall processing throughput of the system, its use is still recommended to achieve more
-consistent batch processing times. Make sure you set the CMS GC on both the driver (using `--driver-java-options` in `spark-submit`) and the executors (using [Spark configuration](configuration.html#runtime-environment) `spark.executor.extraJavaOptions`).
+* **CMS Garbage Collector （CMS垃圾收集器）**: 强烈建议使用 concurrent mark-and-sweep GC , 以保持 GC 相关的暂停始终如一.即使 concurrent GC 已知可以减少
+系统的整体处理吞吐量, 其使用仍然建议实现更多一致的 batch processing times （批处理时间）.确保在 driver （使用 `--driver-java-options` 在 `spark-submit` 中 ）和 executors （使用 [Spark configuration](configuration.html#runtime-environment) `spark.executor.extraJavaOptions` ）中设置 CMS GC.
 
-* **Other tips**: To further reduce GC overheads, here are some more tips to try.
-    - Persist RDDs using the `OFF_HEAP` storage level. See more detail in the [Spark Programming Guide](programming-guide.html#rdd-persistence).
-    - Use more executors with smaller heap sizes. This will reduce the GC pressure within each JVM heap.
+* **Other tips （其他提示）**: 为了进一步降低 GC 开销, 以下是一些更多的提示.
+    - 使用 `OFF_HEAP` 存储级别的保持 RDDs .在 [Spark Programming Guide](programming-guide.html#rdd-persistence) 中查看更多详细信息.
+    - 使用更小的 heap sizes 的 executors.这将降低每个 JVM heap 内的 GC 压力.
 
 ***
 
-##### Important points to remember:
+##### Important points to remember（要记住的要点）:
 {:.no_toc}
-- A DStream is associated with a single receiver. For attaining read parallelism multiple receivers i.e. multiple DStreams need to be created. A receiver is run within an executor. It occupies one core. Ensure that there are enough cores for processing after receiver slots are booked i.e. `spark.cores.max` should take the receiver slots into account. The receivers are allocated to executors in a round robin fashion.
+- DStream 与 single receiver （单个接收器）相关联.为了获得读取并行性, 需要创建多个 receivers , 即 multiple DStreams .receiver 在一个 executor 中运行.它占据一个 core （内核）.确保在 receiver slots are booked 后有足够的内核进行处理, 即 `spark.cores.max` 应该考虑 receiver slots . receivers 以循环方式分配给 executors .
 
-- When data is received from a stream source, receiver creates blocks of data.  A new block of data is generated every blockInterval milliseconds. N blocks of data are created during the batchInterval where N = batchInterval/blockInterval. These blocks are distributed by the BlockManager of the current executor to the block managers of other executors. After that, the Network Input Tracker running on the driver is informed about the block locations for further processing.
+- 当从 stream source 接收到数据时, receiver 创建数据 blocks （块）.每个 blockInterval 毫秒生成一个新的数据块.在  N = batchInterval/blockInterval 的 batchInterval 期间创建 N 个数据块.这些块由当前 executor 的 BlockManager 分发给其他执行程序的 block managers .之后, 在驱动程序上运行的 Network Input Tracker （网络输入跟踪器）通知有关进一步处理的块位置
 
-- An RDD is created on the driver for the blocks created during the batchInterval. The blocks generated during the batchInterval are partitions of the RDD. Each partition is a task in spark. blockInterval== batchinterval would mean that a single partition is created and probably it is processed locally.
+- 在驱动程序中为在 batchInterval 期间创建的块创建一个 RDD .在 batchInterval 期间生成的块是 RDD 的 partitions .每个分区都是一个 spark 中的 task. blockInterval == batchinterval 意味着创建 single partition （单个分区）, 并且可能在本地进行处理.
 
-- The map tasks on the blocks are processed in the executors (one that received the block, and another where the block was replicated) that has the blocks irrespective of block interval, unless non-local scheduling kicks in.
-Having bigger blockinterval means bigger blocks. A high value of `spark.locality.wait` increases the chance of processing a block on the local node. A balance needs to be found out between these two parameters to ensure that the bigger blocks are processed locally.
+- 除非 non-local scheduling （非本地调度）进行, 否则块上的 map tasks （映射任务）将在 executors （接收 block, 复制块的另一个块）中进行处理.具有更大的 block interval （块间隔）意味着更大的块. `spark.locality.wait` 的高值增加了处理 local node （本地节点）上的块的机会.需要在这两个参数之间找到平衡, 以确保在本地处理较大的块.
 
-- Instead of relying on batchInterval and blockInterval, you can define the number of partitions by calling `inputDstream.repartition(n)`. This reshuffles the data in RDD randomly to create n number of partitions. Yes, for greater parallelism. Though comes at the cost of a shuffle. An RDD's processing is scheduled by driver's jobscheduler as a job. At a given point of time only one job is active. So, if one job is executing the other jobs are queued.
+- 而不是依赖于 batchInterval 和 blockInterval , 您可以通过调用 `inputDstream.repartition(n)` 来定义 number of partitions （分区数）.这样可以随机重新组合 RDD 中的数据, 创建 n 个分区.是的, 为了更大的 parallelism （并行性）.虽然是 shuffle 的代价. RDD 的处理由 driver's jobscheduler 作为一项工作安排.在给定的时间点, 只有一个 job 是 active 的.因此, 如果一个作业正在执行, 则其他作业将排队.
 
-- If you have two dstreams there will be two RDDs formed and there will be two jobs created which will be scheduled one after the another. To avoid this, you can union two dstreams. This will ensure that a single unionRDD is formed for the two RDDs of the dstreams. This unionRDD is then considered as a single job. However the partitioning of the RDDs is not impacted.
+- 如果您有两个 dstream , 将会有两个 RDD 形成, 并且将创建两个将被安排在另一个之后的作业.为了避免这种情况, 你可以联合两个 dstream .这将确保为 dstream 的两个 RDD 形成一个 unionRDD .这个 unionRDD 然后被认为是一个 single job （单一的工作）.但 RDD 的 partitioning （分区）不受影响.
 
-- If the batch processing time is more than batchinterval then obviously the receiver's memory will start filling up and will end up in throwing exceptions (most probably BlockNotFoundException). Currently there is  no way to pause the receiver. Using SparkConf configuration `spark.streaming.receiver.maxRate`, rate of receiver can be limited.
+- 如果 batch processing time （批处理时间）超过 batchinterval （批次间隔）, 那么显然 receiver 的内存将会开始填满, 最终会抛出 exceptions （最可能是 BlockNotFoundException ）.目前没有办法暂停 receiver .使用 SparkConf 配置 `spark.streaming.receiver.maxRate` ,  receiver 的 rate 可以受到限制.
 
 
 ***************************************************************************************************
 ***************************************************************************************************
 
-# Fault-tolerance Semantics
-In this section, we will discuss the behavior of Spark Streaming applications in the event
-of failures. 
+# Fault-tolerance Semantics （容错语义）
+在本节中, 我们将讨论 Spark Streaming applications 在该 event 中的行为的失败.
 
-## Background
+## Background（背景）
 {:.no_toc}
-To understand the semantics provided by Spark Streaming, let us remember the basic fault-tolerance semantics of Spark's RDDs.
+要了解 Spark Streaming 提供的语义, 请记住 Spark 的 RDD 的基本 fault-tolerance semantics （容错语义）.
 
-1. An RDD is an immutable, deterministically re-computable, distributed dataset. Each RDD
-remembers the lineage of deterministic operations that were used on a fault-tolerant input
-dataset to create it.
-1. If any partition of an RDD is lost due to a worker node failure, then that partition can be
-re-computed from the original fault-tolerant dataset using the lineage of operations.
-1. Assuming that all of the RDD transformations are deterministic, the data in the final transformed
-   RDD will always be the same irrespective of failures in the Spark cluster.
+1. RDD 是一个不可变的, 确定性地可重新计算的分布式数据集.每个RDD
+记住在容错输入中使用的确定性操作的 lineage 数据集创建它.
+1. 如果 RDD 的任何 partition 由于工作节点故障而丢失, 则该分区可以是
+从 original fault-tolerant dataset （原始容错数据集）中使用业务流程重新计算.
+1. 假设所有的 RDD transformations 都是确定性的, 最后的数据被转换, 无论 Spark 集群中的故障如何, RDD 始终是一样的.
 
-Spark operates on data in fault-tolerant file systems like HDFS or S3. Hence,
-all of the RDDs generated from the fault-tolerant data are also fault-tolerant. However, this is not
-the case for Spark Streaming as the data in most cases is received over the network (except when
-`fileStream` is used). To achieve the same fault-tolerance properties for all of the generated RDDs,
-the received data is replicated among multiple Spark executors in worker nodes in the cluster
-(default replication factor is 2). This leads to two kinds of data in the
-system that need to recovered in the event of failures:
+Spark 运行在容错文件系统（如 HDFS 或 S3 ）中的数据上.因此, 从容错数据生成的所有 RDD 也都是容错的.但是, 这不是在大多数情况下, Spark Streaming 作为数据的情况通过网络接收（除非 `fileStream` 被使用）.为了为所有生成的 RDD 实现相同的 fault-tolerance properties （容错属性）, 接收的数据在集群中的工作节点中的多个 Spark executors 之间进行复制（默认 replication factor （备份因子）为 2）.这导致了发生故障时需要恢复的系统中的两种数据:
 
-1. *Data received and replicated* - This data survives failure of a single worker node as a copy
-  of it exists on one of the other nodes.
-1. *Data received but buffered for replication* - Since this is not replicated,
-   the only way to recover this data is to get it again from the source.
+1. *Data received and replicated （数据接收和复制）* - 这个数据在单个工作节点作为副本的故障中幸存下来, 它存在于其他节点之一上.
+1. *Data received but buffered for replication （接收数据但缓冲进行复制）* - 由于不复制, 恢复此数据的唯一方法是从 source 重新获取.
 
-Furthermore, there are two kinds of failures that we should be concerned about:
+此外, 我们应该关注的有两种 failures:
 
-1. *Failure of a Worker Node* - Any of the worker nodes running executors can fail,
-   and all in-memory data on those nodes will be lost. If any receivers were running on failed
-   nodes, then their buffered data will be lost.
-1. *Failure of the Driver Node* - If the driver node running the Spark Streaming application
-   fails, then obviously the SparkContext is lost, and all executors with their in-memory
-   data are lost.
+1. *Failure of a Worker Node （工作节点的故障）* - 运行 executors 的任何工作节点都可能会故障, 并且这些节点上的所有内存中数据将丢失.如果任何 receivers 运行在失败节点, 则它们的 buffered （缓冲）数据将丢失.
+1. *Failure of the Driver Node （Driver 节点的故障）* -  如果运行 Spark Streaming application 的 driver node 发生了故障, 那么显然 SparkContext 丢失了, 所有的 executors 和其内存中的数据也一起丢失了.
 
-With this basic knowledge, let us understand the fault-tolerance semantics of Spark Streaming.
+有了这个基础知识, 让我们了解 Spark Streaming 的 fault-tolerance semantics （容错语义）.
 
-## Definitions
+## Definitions （定义）
 {:.no_toc}
-The semantics of streaming systems are often captured in terms of how many times each record can be processed by the system. There are three types of guarantees that a system can provide under all possible operating conditions (despite failures, etc.)
+streaming systems （流系统）的语义通常是通过系统可以处理每个记录的次数来捕获的.系统可以在所有可能的操作条件下提供三种类型的保证（尽管有故障等）.
 
-1. *At most once*: Each record will be either processed once or not processed at all.
-2. *At least once*: Each record will be processed one or more times. This is stronger than *at-most once* as it ensure that no data will be lost. But there may be duplicates.
-3. *Exactly once*: Each record will be processed exactly once - no data will be lost and no data will be processed multiple times. This is obviously the strongest guarantee of the three.
+1. *At most once （最多一次）*: 每个 record （记录）将被处理一次或根本不处理.
+2. *At least once （至少一次）*: 每个 record （记录）将被处理一次或多次.这比*at-most once*, 因为它确保没有数据将丢失.但可能有重复.
+3. *Exactly once（有且仅一次）*: 每个 record （记录） 将被精确处理一次 - 没有数据丢失, 数据不会被多次处理.这显然是三者的最强保证.
 
-## Basic Semantics
+## Basic Semantics （基本语义）
 {:.no_toc}
-In any stream processing system, broadly speaking, there are three steps in processing the data.
+在任何 stream processing system （流处理系统）中, 广义上说, 处理数据有三个步骤.
 
-1. *Receiving the data*: The data is received from sources using Receivers or otherwise.
+1. *Receiving the data （接收数据）*: 使用 Receivers 或其他方式从数据源接收数据.
 
-1. *Transforming the data*: The received data is transformed using DStream and RDD transformations.
+1. *Transforming the data （转换数据）*: 使用 DStream 和 RDD transformations 来 transformed （转换）接收到的数据.
 
-1. *Pushing out the data*: The final transformed data is pushed out to external systems like file systems, databases, dashboards, etc.
+1. *Pushing out the data （推出数据）*: 最终的转换数据被推出到 external systems （外部系统）, 如 file systems （文件系统）, databases （数据库）, dashboards （仪表板）等.
 
-If a streaming application has to achieve end-to-end exactly-once guarantees, then each step has to provide an exactly-once guarantee. That is, each record must be received exactly once, transformed exactly once, and pushed to downstream systems exactly once. Let's understand the semantics of these steps in the context of Spark Streaming.
+如果 streaming application 必须实现 end-to-end exactly-once guarantees （端到端的一次且仅一次性保证）, 那么每个步骤都必须提供 exactly-once guarantee .也就是说, 每个记录必须被精确地接收一次, 转换完成一次, 并被推送到下游系统一次.让我们在 Spark Streaming 的上下文中了解这些步骤的语义.
 
-1. *Receiving the data*: Different input sources provide different guarantees. This is discussed in detail in the next subsection.
+1. *Receiving the data （接收数据）*: 不同的 input sources 提供不同的保证.这将在下一小节中详细讨论.
 
-1. *Transforming the data*: All data that has been received will be processed _exactly once_, thanks to the guarantees that RDDs provide. Even if there are failures, as long as the received input data is accessible, the final transformed RDDs will always have the same contents.
+1. *Transforming the data （转换数据）*: 所有已收到的数据都将被处理 _exactly once_ , 这得益于 RDD 提供的保证.即使存在故障, 只要接收到的输入数据可访问, 最终变换的 RDD 将始终具有相同的内容.
 
-1. *Pushing out the data*: Output operations by default ensure _at-least once_ semantics because it depends on the type of output operation (idempotent, or not) and the semantics of the downstream system (supports transactions or not). But users can implement their own transaction mechanisms to achieve _exactly-once_ semantics. This is discussed in more details later in the section.
+1. *Pushing out the data （推出数据）*: 默认情况下的输出操作确保  _at-least once_ 语义, 因为它取决于输出操作的类型（ idempotent （幂等））或 downstream system （下游系统）的语义（是否支持 transactions （事务））.但用户可以实现自己的事务机制来实现 _exactly-once_ 语义.这将在本节后面的更多细节中讨论.
 
-## Semantics of Received Data
+## Semantics of Received Data （接收数据的语义）
 {:.no_toc}
-Different input sources provide different guarantees, ranging from _at-least once_ to _exactly once_. Read for more details.
+不同的 input sources （输入源）提供不同的保证, 范围从 _at-least once_ 到 _exactly once_ .
 
 ### With Files
 {:.no_toc}
-If all of the input data is already present in a fault-tolerant file system like
-HDFS, Spark Streaming can always recover from any failure and process all of the data. This gives
-*exactly-once* semantics, meaning all of the data will be processed exactly once no matter what fails.
+如果所有的 input data （输入数据）都已经存在于 fault-tolerant file system （容错文件系统）中 HDFS ,  Spark Streaming 可以随时从任何故障中恢复并处理所有数据.这给了 *exactly-once* 语义, 意味着无论什么故障, 所有的数据将被精确处理一次.
 
-### With Receiver-based Sources
+### With Receiver-based Sources （使用基于接收器的数据源）
 {:.no_toc}
-For input sources based on receivers, the fault-tolerance semantics depend on both the failure
-scenario and the type of receiver.
-As we discussed [earlier](#receiver-reliability), there are two types of receivers:
+对于基于 receivers （接收器）的 input sources （输入源）, 容错语义取决于故障场景和接收器的类型.
+正如我们 [earlier](#receiver-reliability) 讨论的, 有两种类型的 receivers （接收器）:
 
-1. *Reliable Receiver* - These receivers acknowledge reliable sources only after ensuring that
-  the received data has been replicated. If such a receiver fails, the source will not receive
-  acknowledgment for the buffered (unreplicated) data. Therefore, if the receiver is
-  restarted, the source will resend the data, and no data will be lost due to the failure.
-1. *Unreliable Receiver* - Such receivers do *not* send acknowledgment and therefore *can* lose
-  data when they fail due to worker or driver failures.
+1. *Reliable Receiver （可靠的接收器）* - 这些 receivers （接收机）只有在确认收到的数据已被复制之后确认 reliable sources （可靠的源）.如果这样的接收器出现故障, source 将不会被接收对于 buffered (unreplicated) data （缓冲（未复制）数据）的确认.因此, 如果 receiver 是重新启动,  source 将重新发送数据, 并且不会由于故障而丢失数据.
+1. *Unreliable Receiver （不可靠的接收器）* - 这样的接收器 *不会* 发送确认, 因此*可能* 丢失数据, 由于 worker 或 driver 故障.
 
-Depending on what type of receivers are used we achieve the following semantics.
-If a worker node fails, then there is no data loss with reliable receivers. With unreliable
-receivers, data received but not replicated can get lost. If the driver node fails,
-then besides these losses, all of the past data that was received and replicated in memory will be
-lost. This will affect the results of the stateful transformations.
+根据使用的 receivers 类型, 我们实现以下语义.
+如果 worker node 出现故障, 则 reliable receivers 没有数据丢失.unreliable
+receivers , 收到但未复制的数据可能会丢失.如果 driver node 失败, 那么除了这些损失之外, 在内存中接收和复制的所有过去的数据将丢失.这将影响 stateful transformations （有状态转换）的结果.
 
-To avoid this loss of past received data, Spark 1.2 introduced _write
-ahead logs_ which save the received data to fault-tolerant storage. With the [write ahead logs
-enabled](#deploying-applications) and reliable receivers, there is zero data loss. In terms of semantics, it provides an at-least once guarantee. 
+为避免过去收到的数据丢失, Spark 1.2 引入了_write ahead logs_ 将接收到的数据保存到 fault-tolerant storage （容错存储）.用[write ahead logs enabled](#deploying-applications) 和 reliable receivers, 数据没有丢失.在语义方面, 它提供 at-least once guarantee （至少一次保证）.
 
-The following table summarizes the semantics under failures:
+下表总结了失败的语义:
 
 <table class="table">
   <tr>
-    <th style="width:30%">Deployment Scenario</th>
-    <th>Worker Failure</th>
-    <th>Driver Failure</th>
+    <th style="width:30%">Deployment Scenario （部署场景）</th>
+    <th>Worker Failure （Worker 故障）</th>
+    <th>Driver Failure （Driver 故障）</th>
   </tr>
   <tr>
     <td>
-      <i>Spark 1.1 or earlier,</i> OR<br/>
-      <i>Spark 1.2 or later without write ahead logs</i>
+      <i>Spark 1.1 或更早版本,</i> 或者<br/>
+      <i>Spark 1.2 或者没有 write ahead logs 的更高的版本</i>
     </td>
     <td>
-      Buffered data lost with unreliable receivers<br/>
-      Zero data loss with reliable receivers<br/>
-      At-least once semantics
+      Buffered data lost with unreliable receivers（unreliable receivers 的缓冲数据丢失）<br/>
+      Zero data loss with reliable receivers （reliable receivers 的零数据丢失）<br/>
+      At-least once semantics （至少一次性语义）
     </td>
     <td>
-      Buffered data lost with unreliable receivers<br/>
-      Past data lost with all receivers<br/>
-      Undefined semantics
+      Buffered data lost with unreliable receivers （unreliable receivers 的缓冲数据丢失）<br/>
+      Past data lost with all receivers （所有的 receivers 的过去的数据丢失）<br/>
+      Undefined semantics （未定义语义）
     </td>
   </tr>
   <tr>
-    <td><i>Spark 1.2 or later with write ahead logs</i></td>
+    <td><i>Spark 1.2 或者带有 write ahead logs 的更高版本</i></td>
     <td>
-        Zero data loss with reliable receivers<br/>
-        At-least once semantics
+        Zero data loss with reliable receivers（reliable receivers 的零数据丢失）<br/>
+        At-least once semantics （至少一次性语义）
     </td>
     <td>
-        Zero data loss with reliable receivers and files<br/>
-        At-least once semantics
+        Zero data loss with reliable receivers and files （reliable receivers 和 files 的零数据丢失）<br/>
+        At-least once semantics （至少一次性语义）
     </td>
   </tr>
   <tr>
@@ -2349,24 +2044,20 @@ The following table summarizes the semantics under failures:
   </tr>
 </table>
 
-### With Kafka Direct API
+### With Kafka Direct API （使用 Kafka Direct API）
 {:.no_toc}
-In Spark 1.3, we have introduced a new Kafka Direct API, which can ensure that all the Kafka data is received by Spark Streaming exactly once. Along with this, if you implement exactly-once output operation, you can achieve end-to-end exactly-once guarantees. This approach is further discussed in the [Kafka Integration Guide](streaming-kafka-integration.html).
+在 Spark 1.3 中, 我们引入了一个新的 Kafka Direct API , 可以确保所有的 Kafka 数据都被 Spark Streaming exactly once （一次）接收.与此同时, 如果您实现 exactly-once output operation （一次性输出操作）, 您可以实现 end-to-end exactly-once guarantees （端到端的一次且仅一次性保证）.在 [Kafka Integration Guide](streaming-kafka-integration.html) 中进一步讨论了这种方法.
 
-## Semantics of output operations
+## Semantics of output operations （输出操作的语义）
 {:.no_toc}
-Output operations (like `foreachRDD`) have _at-least once_ semantics, that is, 
-the transformed data may get written to an external entity more than once in
-the event of a worker failure. While this is acceptable for saving to file systems using the
-`saveAs***Files` operations (as the file will simply get overwritten with the same data),
-additional effort may be necessary to achieve exactly-once semantics. There are two approaches.
+Output operations （输出操作）（如 `foreachRDD` ）具有 _at-least once_ 语义, 也就是说,  transformed data （变换后的数据）可能会不止一次写入 external entity （外部实体）在一个 worker 故障事件中.虽然这是可以接受的使用 `saveAs***Files`操作（因为文件将被相同的数据简单地覆盖） 保存到文件系统, 可能需要额外的努力来实现 exactly-once （一次且仅一次）语义.有两种方法.
 
-- *Idempotent updates*: Multiple attempts always write the same data. For example, `saveAs***Files` always writes the same data to the generated files.
+- *Idempotent updates （幂等更新）*: 多次尝试总是写入相同的数据.例如,  `saveAs***Files` 总是将相同的数据写入生成的文件.
 
-- *Transactional updates*: All updates are made transactionally so that updates are made exactly once atomically. One way to do this would be the following.
+- *Transactional updates （事务更新）*: 所有更新都是事务性的, 以便更新完全按原子进行.这样做的一个方法如下.
 
-    - Use the batch time (available in `foreachRDD`) and the partition index of the RDD to create an identifier. This identifier uniquely identifies a blob data in the streaming application.
-    - Update external system with this blob transactionally (that is, exactly once, atomically) using the identifier. That is, if the identifier is not already committed, commit the partition data and the identifier atomically. Else, if this was already committed, skip the update.
+    - 使用批处理时间（在 `foreachRDD` 中可用）和 RDD 的 partition index （分区索引）来创建 identifier （标识符）.该标识符唯一地标识 streaming application 中的 blob 数据.
+    - 使用该 identifier （标识符）blob transactionally （blob 事务地）更新 external system （外部系统）（即, exactly once, atomically （一次且仅一次, 原子性地））.也就是说, 如果 identifier （标识符）尚未提交, 则以 atomically （原子方式）提交 partition data （分区数据）和 identifier （标识符）.否则, 如果已经提交, 请跳过更新.
 
           dstream.foreachRDD { (rdd, time) =>
             rdd.foreachPartition { partitionIterator =>
@@ -2379,31 +2070,31 @@ additional effort may be necessary to achieve exactly-once semantics. There are 
 ***************************************************************************************************
 ***************************************************************************************************
 
-# Where to Go from Here
-* Additional guides
-    - [Kafka Integration Guide](streaming-kafka-integration.html)
-    - [Kinesis Integration Guide](streaming-kinesis-integration.html)
-    - [Custom Receiver Guide](streaming-custom-receivers.html)
-* Third-party DStream data sources can be found in [Third Party Projects](http://spark.apache.org/third-party-projects.html)
-* API documentation
-  - Scala docs
-    * [StreamingContext](api/scala/index.html#org.apache.spark.streaming.StreamingContext) and
+# 快速链接
+* 附加指南
+    - [Kafka 集成指南](streaming-kafka-integration.html)
+    - [Kinesis 集成指南](streaming-kinesis-integration.html)
+    - [自定义 Receiver（接收器）指南](streaming-custom-receivers.html)
+* 第三方 DStream 数据源可以在 [第三方项目](http://spark.apache.org/third-party-projects.html) 上查看.
+* API 文档
+  - Scala 文档
+    * [StreamingContext](api/scala/index.html#org.apache.spark.streaming.StreamingContext) 和
   [DStream](api/scala/index.html#org.apache.spark.streaming.dstream.DStream)
     * [KafkaUtils](api/scala/index.html#org.apache.spark.streaming.kafka.KafkaUtils$),
     [FlumeUtils](api/scala/index.html#org.apache.spark.streaming.flume.FlumeUtils$),
     [KinesisUtils](api/scala/index.html#org.apache.spark.streaming.kinesis.KinesisUtils$),
-  - Java docs
+  - Java 文档
     * [JavaStreamingContext](api/java/index.html?org/apache/spark/streaming/api/java/JavaStreamingContext.html),
-    [JavaDStream](api/java/index.html?org/apache/spark/streaming/api/java/JavaDStream.html) and
+    [JavaDStream](api/java/index.html?org/apache/spark/streaming/api/java/JavaDStream.html) 和
     [JavaPairDStream](api/java/index.html?org/apache/spark/streaming/api/java/JavaPairDStream.html)
     * [KafkaUtils](api/java/index.html?org/apache/spark/streaming/kafka/KafkaUtils.html),
     [FlumeUtils](api/java/index.html?org/apache/spark/streaming/flume/FlumeUtils.html),
     [KinesisUtils](api/java/index.html?org/apache/spark/streaming/kinesis/KinesisUtils.html)
-  - Python docs
-    * [StreamingContext](api/python/pyspark.streaming.html#pyspark.streaming.StreamingContext) and [DStream](api/python/pyspark.streaming.html#pyspark.streaming.DStream)
+  - Python 文档
+    * [StreamingContext](api/python/pyspark.streaming.html#pyspark.streaming.StreamingContext) 和 [DStream](api/python/pyspark.streaming.html#pyspark.streaming.DStream)
     * [KafkaUtils](api/python/pyspark.streaming.html#pyspark.streaming.kafka.KafkaUtils)
 
-* More examples in [Scala]({{site.SPARK_GITHUB_URL}}/tree/master/examples/src/main/scala/org/apache/spark/examples/streaming)
-  and [Java]({{site.SPARK_GITHUB_URL}}/tree/master/examples/src/main/java/org/apache/spark/examples/streaming)
-  and [Python]({{site.SPARK_GITHUB_URL}}/tree/master/examples/src/main/python/streaming)
-* [Paper](http://www.eecs.berkeley.edu/Pubs/TechRpts/2012/EECS-2012-259.pdf) and [video](http://youtu.be/g171ndOHgJ0) describing Spark Streaming.
+* 更多的示例在 [Scala]({{site.SPARK_GITHUB_URL}}/tree/master/examples/src/main/scala/org/apache/spark/examples/streaming)
+  和 [Java]({{site.SPARK_GITHUB_URL}}/tree/master/examples/src/main/java/org/apache/spark/examples/streaming)
+  和 [Python]({{site.SPARK_GITHUB_URL}}/tree/master/examples/src/main/python/streaming)
+* 描述 Spark Streaming 的 [Paper](http://www.eecs.berkeley.edu/Pubs/TechRpts/2012/EECS-2012-259.pdf) 和 [video](http://youtu.be/g171ndOHgJ0).
